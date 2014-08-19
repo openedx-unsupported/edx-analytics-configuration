@@ -1,0 +1,2 @@
+ansible==1.4.4	# GPL v3
+boto==2.22.1	# MIT

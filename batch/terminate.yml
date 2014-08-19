@@ -1,0 +1,13 @@
+---
+
+- name: Terminate a cluster
+  hosts: localhost
+  gather_facts: False
+  # The following vars must be overridden
+  # name: ETL
+  tasks:
+    - name: terminate the EMR cluster
+      local_action:
+        module: emr
+        name: "{{ name }}"
+        state: absent

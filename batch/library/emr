@@ -1,0 +1,239 @@
+#!/usr/bin/env python
+
+import os
+import re
+import time
+
+from boto.exception import EC2ResponseError
+from boto.ec2.connection import EC2Connection
+from boto.emr.bootstrap_action import BootstrapAction
+from boto.emr.connection import EmrConnection
+from boto.emr.instance_group import InstanceGroup
+from boto.emr.step import (
+    JarStep, StreamingStep, ScriptRunnerStep, InstallPigStep, PigStep, InstallHiveStep, HiveStep
+)
+
+
+POLLING_INTERVAL_SECONDS = 30
+DEFAULT_AMI_VERSION = '2.4.2'
+DEFAULT_INSTANCE_GROUPS = {}
+STEP_TYPE_MAP = {
+    'jar': JarStep,
+    'streaming': StreamingStep,
+    'script': ScriptRunnerStep,
+    'pig_install': InstallPigStep,
+    'pig': PigStep,
+    'hive_install': InstallHiveStep,
+    'hive': HiveStep,
+}
+
+
+class ElasticMapreduceCluster():
+
+    def __init__(self, name=None):
+        self.name = name
+        self._emr = EmrConnection()
+        self._ec2 = EC2Connection()
+        self.jobflow = self.find_named_jobflow()
+
+    def find_named_jobflow(self):
+        for cur_flow in self._emr.describe_jobflows():
+            if cur_flow.name == self.name and self.cluster_is_alive(cur_flow):
+                return cur_flow
+        return None
+
+    def provision_if_necessary(
+        self,
+        timeout=3000,
+        tags=None,
+        **remaining_args
+    ):
+        changed = False
+        if self.jobflow is None:
+            params = self.get_run_jobflow_parameters(**remaining_args)
+            jobflow_id = self._emr.run_jobflow(self.name, **params)
+            self.add_tags(jobflow_id, tags)
+            changed = True
+            self.jobflow = self._emr.describe_jobflow(jobflow_id)
+
+        self.wait_for_cluster_to_launch(timeout)
+        return changed
+
+    def get_run_jobflow_parameters(self, **remaining_args):
+        arguments = dict(remaining_args)
+        keypair_name = arguments.pop('keypair_name', os.getenv('AWS_KEYPAIR_NAME', None))
+        if keypair_name is None:
+            raise ValueError('Either keypair_name must be provided or AWS_KEYPAIR_NAME must be set in the environment.')
+
+        parameters = {
+            'keep_alive': True,
+            'ami_version': DEFAULT_AMI_VERSION,
+            'visible_to_all_users': True,
+            'ec2_keyname': keypair_name,
+        }
+
+        instance_groups = arguments.pop('instance_groups', DEFAULT_INSTANCE_GROUPS)
+        parameters['instance_groups'] = self.get_boto_instance_group_specs(instance_groups)
+
+        bootstrap_actions = arguments.pop('bootstrap_actions', None)
+        if bootstrap_actions is not None:
+            parameters['bootstrap_actions'] = self.get_boto_bootstrap_action_specs(bootstrap_actions)
+
+        steps = arguments.pop('steps', None)
+        if steps is not None:
+            parameters['steps'] = self.get_boto_step_specs(steps)
+
+        if 'vpc_subnet_id' in arguments:
+            parameters['api_params'] = { 'Instances.Ec2SubnetId': arguments.pop('vpc_subnet_id') }
+
+        parameters.update(arguments)
+        return parameters
+
+    def add_tags(self, jobflow_id, tags):
+        if tags is None:
+            tags = {}
+        tags['ansible:emr:name'] = self.name
+        self._emr.add_tags(jobflow_id, tags)
+
+    def get_boto_instance_group_specs(self, instance_group_configs):
+        instance_group_specs = []
+
+        for role, args in instance_group_configs.iteritems():
+            # copy the arguments, since we will be modifying them
+            args = dict(args)
+            # this name is not terribly useful, but required by boto, so pass in the role name
+            args['name'] = role
+            # boto expects roles MASTER, CORE, or TASK
+            args['role'] = role.upper()
+
+            ig = InstanceGroup(**args)
+            if int(ig.num_instances) > 0:
+                instance_group_specs.append(ig)
+
+        return instance_group_specs
+
+    def get_boto_bootstrap_action_specs(self, bootstrap_action_configs):
+        bootstrap_action_specs = []
+
+        for name, spec in bootstrap_action_configs.iteritems():
+            path = spec
+            args = None
+            if isinstance(spec, dict):
+                path = spec.get('path')
+                args = spec.get('args')
+
+            bootstrap_action_specs.append(BootstrapAction(name, path, args))
+
+        return bootstrap_action_specs
+
+    def get_boto_step_specs(self, step_configs):
+        steps = []
+
+        for step_config in step_configs:
+            step_type = step_config.pop('type', 'jar')
+            step_class = STEP_TYPE_MAP.get(step_type)
+            if step_class is None:
+                raise ValueError('Unknown step type "{0}"'.format(step_type))
+
+            steps.append(step_class(**step_config))
+
+        return steps
+
+    def wait_for_cluster_to_launch(self, timeout):
+        wait_timeout = time.time() + timeout
+        while wait_timeout > time.time() and not self.cluster_is_ready():
+            self.jobflow = self._emr.describe_jobflow(self.jobflow.jobflowid)
+
+            if not self.cluster_is_alive():
+                raise RuntimeError('Job flow failed to start.')
+
+            if not self.cluster_is_ready():
+                time.sleep(POLLING_INTERVAL_SECONDS)
+            else:
+                break
+
+        if not self.cluster_is_ready():
+            # If the cluster is only partially built, terminate any residual machines
+            # before quitting
+            self.terminate_if_necessary(timeout)
+            raise RuntimeError('Timeout waiting for job flow to initialize.')
+
+    def cluster_is_ready(self, jobflow=None):
+        jobflow = jobflow or self.jobflow
+        if jobflow.state not in ['WAITING']:
+            return False
+        else:
+            for instance_group in jobflow.instancegroups:
+                if instance_group.state != 'RUNNING':
+                    return False
+            return True
+
+    def cluster_is_alive(self, jobflow=None):
+        jobflow = jobflow or self.jobflow
+        return jobflow.state not in ['TERMINATED', 'COMPLETED', 'FAILED']
+
+    def terminate_if_necessary(self, name, timeout=3000):
+        changed = False
+        if self.jobflow is not None:
+            self._emr.terminate_jobflow(self.jobflow.jobflowid)
+            changed = True
+
+            self.wait_for_cluster_to_terminate(timeout)
+        return changed
+
+    def wait_for_cluster_to_terminate(self, timeout):
+        wait_timeout = time.time() + timeout
+        while wait_timeout > time.time() and self.cluster_is_alive():
+            self.jobflow = self._emr.describe_jobflow(self.jobflow.jobflowid)
+
+            if self.cluster_is_alive():
+                time.sleep(POLLING_INTERVAL_SECONDS)
+            else:
+                break
+
+        if self.cluster_is_alive():
+            raise RuntimeError('Timeout waiting for job flow to terminate.')
+
+
+def main():
+    module = AnsibleModule(
+        argument_spec = dict(
+            name                 = dict(required=True),
+            availability_zone    = dict(),
+            job_flow_role        = dict(),
+            instance_groups      = dict(),
+            tags                 = dict(),
+            vpc_subnet_id        = dict(),
+            visible_to_all_users = dict(),
+            log_uri              = dict(),
+            bootstrap_actions    = dict(),
+            steps                = dict(),
+            keypair_name         = dict(),
+            state                = dict(default='present'),
+        )
+    )
+    arguments = dict(module.params)
+    name = arguments.pop('name')
+
+    try:
+        cluster = ElasticMapreduceCluster(name)
+        desired_state = arguments.pop('state')
+        if desired_state == 'present':
+            changed = cluster.provision_if_necessary(**arguments)
+            module.exit_json(
+                changed=changed,
+                jobflow_id=cluster.jobflow.jobflowid,
+                master_public_dns_name=cluster.jobflow.masterpublicdnsname
+            )
+        elif desired_state == 'absent':
+            changed = cluster.terminate_if_necessary(name)
+            module.exit_json(changed=changed)
+        else:
+            raise ValueError('Unknown state requested: {0}'.format(desired_state))
+    except Exception, e:
+        module.fail_json(msg=str(e))
+
+
+# import module snippets
+from ansible.module_utils.basic import *
+main()

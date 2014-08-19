@@ -1,0 +1,14 @@
+- name: configure jenkins ci
+  hosts: analytics-jenkins-integration
+  sudo: True
+  gather_facts: True
+  vars:
+    JENKINS_EXTRA_PKGS:
+      - libmysqlclient-dev
+      - mysql-client
+      - zip
+      - xvfb
+  roles:
+    - python2.6
+    - s3cmd
+    - jenkins

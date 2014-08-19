@@ -1,0 +1,18 @@
+---
+
+python26_debian_pkgs:
+    # required to install python2.6 using dpkg
+    - libdb4.8
+    - libssl0.9.8
+    # required for lxml dependencies
+    - libxml2-dev
+    - libxslt1-dev
+
+python26_deb_url_root: "http://us.archive.ubuntu.com/ubuntu/pool/main/p/python2.6/"
+
+python26_deb_pkgs:
+    - "libpython2.6_2.6.5-1ubuntu6.3_amd64.deb"
+    - "python2.6-dbg_2.6.5-1ubuntu6.3_amd64.deb"
+    - "python2.6-dev_2.6.5-1ubuntu6.3_amd64.deb"
+    - "python2.6-minimal_2.6.5-1ubuntu6.3_amd64.deb"
+    - "python2.6_2.6.5-1ubuntu6.3_amd64.deb"

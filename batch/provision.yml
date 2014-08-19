@@ -1,0 +1,62 @@
+---
+
+- name: Provision cluster
+  hosts: localhost
+  gather_facts: False
+  vars:
+    # The following vars should probably be overridden
+    - name: ETL
+    - task_instance_num: 1
+    - task_instance_type: m1.medium
+    - task_instance_bid: 0.03
+    - master_instance_num: 1
+    - master_instance_type: m1.small
+    - core_instance_num: 2
+    - core_instance_type: m1.small
+    - bootstrap_actions: {}
+    - steps: {}
+    - keypair_name: "{{ lookup('env', 'AWS_KEYPAIR_NAME') }}"
+    - role: emr
+    # The following variables *must* be overridden
+    # - vpc_subnet_id: subnet-7bc4913d
+    # - user_info: []
+    # - log_uri: s3://some-bucket-name
+  tasks:
+    - name: provision EMR cluster
+      local_action:
+        module: emr
+        name: "{{ name }}"
+        keypair_name: "{{ keypair_name }}"
+        vpc_subnet_id: "{{ vpc_subnet_id }}"
+        log_uri: "{{ log_uri }}"
+        visible_to_all_users: yes
+        job_flow_role: "{{ role }}"
+        instance_groups:
+          master:
+            num_instances: "{{ master_instance_num }}"
+            type: "{{ master_instance_type }}"
+            market: ON_DEMAND
+          core:
+            num_instances: "{{ core_instance_num }}"
+            type: "{{ core_instance_type }}"
+            market: ON_DEMAND
+          task:
+            num_instances: "{{ task_instance_num }}"
+            type: "{{ task_instance_type }}"
+            market: SPOT
+            bidprice: "{{ task_instance_bid }}"
+        bootstrap_actions: $bootstrap_actions
+        steps: $steps
+      register: jobflow
+
+    - name: add master to group
+      local_action: >
+        add_host hostname={{ jobflow.master_public_dns_name }} groupname=launched_master ansible_ssh_user=hadoop ansible_connection=ssh
+
+
+- name: Configure SSH access to cluster
+  hosts: launched_master
+  gather_facts: False
+  sudo: True
+  roles:
+    - user

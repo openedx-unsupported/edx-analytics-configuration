@@ -1,0 +1,13 @@
+---
+
+- name: create working directory
+  file: path=/var/lib/s3cmd state=directory
+
+- name: download package
+  get_url: url=https://github.com/s3tools/s3cmd/archive/v{{ s3cmd_version }}.zip dest=/var/lib/s3cmd/s3cmd.zip
+
+- name: unzip package
+  command: unzip -o s3cmd.zip chdir=/var/lib/s3cmd/
+
+- name: install
+  command: python setup.py install chdir=/var/lib/s3cmd/s3cmd-{{ s3cmd_version }}

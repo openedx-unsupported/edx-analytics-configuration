@@ -1,0 +1,21 @@
+---
+
+- name: install from apt
+  sudo: yes
+  apt: pkg={{ item }} state=latest update_cache=yes
+  with_items:
+      - python
+      - python-dev
+      - python-pip
+
+- name: upgrade pip
+  pip: name=pip state=latest
+
+- name: install virtualenv
+  pip: name={{ item }} state=latest
+  with_items:
+      - setuptools
+      - virtualenv
+
+- name: install tox
+  pip: name=tox state=latest

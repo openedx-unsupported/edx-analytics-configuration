@@ -1,0 +1,16 @@
+---
+# Python 2.6 is no longer available through aptitude, so we install
+# them from the Debian packages.
+
+- name: install system packages
+  apt:
+    pkg={{ python26_debian_pkgs | join(',') }}
+    state=present update_cache=yes
+
+- name: download debian packages
+  get_url: url="{{ python26_deb_url_root }}/{{ item }}" dest="/tmp/{{ item }}"
+  with_items: python26_deb_pkgs
+
+- name: install debian packages
+  shell: "dpkg -i /tmp/{{ item }}"
+  with_items: python26_deb_pkgs

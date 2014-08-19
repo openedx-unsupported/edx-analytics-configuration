@@ -1,0 +1,13 @@
+- name: configure jenkins scheduler
+  hosts: analytics-jenkins-scheduler
+  sudo: True
+  gather_facts: True
+  vars:
+    JENKINS_EXTRA_PKGS:
+      - libmysqlclient-dev
+      - mysql-client
+      - zip
+  roles:
+    - python
+    - s3cmd
+    - jenkins

@@ -35,8 +35,8 @@
         owner={{ jenkins_user }} group={{ jenkins_group }}
 
 - name: set default environment
-  copy: src=etc/default/jenkins dest=/etc/default/jenkins
-        mode=644 owner=root group=root
+  template: src=etc/default/jenkins.j2 dest=/etc/default/jenkins
+            mode=644 owner=root group=root
 
 - name: make plugins directory
   sudo_user: jenkins

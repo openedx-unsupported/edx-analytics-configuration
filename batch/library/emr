@@ -15,7 +15,7 @@ from boto.emr.step import (
 
 
 POLLING_INTERVAL_SECONDS = 30
-DEFAULT_AMI_VERSION = '2.4.2'
+DEFAULT_AMI_VERSION = '2.4.7'
 DEFAULT_INSTANCE_GROUPS = {}
 STEP_TYPE_MAP = {
     'jar': JarStep,
@@ -64,10 +64,10 @@ class ElasticMapreduceCluster():
         keypair_name = arguments.pop('keypair_name', os.getenv('AWS_KEYPAIR_NAME', None))
         if keypair_name is None:
             raise ValueError('Either keypair_name must be provided or AWS_KEYPAIR_NAME must be set in the environment.')
-
+        ami_version = arguments.pop('ami_version', DEFAULT_AMI_VERSION)
         parameters = {
             'keep_alive': True,
-            'ami_version': DEFAULT_AMI_VERSION,
+            'ami_version': ami_version,
             'visible_to_all_users': True,
             'ec2_keyname': keypair_name,
         }
@@ -209,6 +209,7 @@ def main():
             bootstrap_actions    = dict(),
             steps                = dict(),
             keypair_name         = dict(),
+            ami_version          = dict(),
             state                = dict(default='present'),
         )
     )

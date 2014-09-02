@@ -15,8 +15,10 @@
     - core_instance_type: m1.small
     - bootstrap_actions: {}
     - steps: {}
+    # The following vars may be overridden
     - keypair_name: "{{ lookup('env', 'AWS_KEYPAIR_NAME') }}"
     - role: emr
+    - ami_version: 2.4.7
     # The following variables *must* be overridden
     # - vpc_subnet_id: subnet-7bc4913d
     # - user_info: []
@@ -31,6 +33,7 @@
         log_uri: "{{ log_uri }}"
         visible_to_all_users: yes
         job_flow_role: "{{ role }}"
+        ami_version: "{{ ami_version }}"
         instance_groups:
           master:
             num_instances: "{{ master_instance_num }}"

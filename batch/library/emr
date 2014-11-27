@@ -3,6 +3,7 @@
 import os
 import re
 import time
+import traceback
 
 from boto.exception import EC2ResponseError
 from boto.ec2.connection import EC2Connection
@@ -26,6 +27,9 @@ STEP_TYPE_MAP = {
     'hive_install': InstallHiveStep,
     'hive': HiveStep,
 }
+# For a state flow diagram see - http://docs.aws.amazon.com/ElasticMapReduce/latest/DeveloperGuide/ProcessingCycle.html
+ALIVE_STATES = ['STARTING', 'BOOTSTRAPPING', 'RUNNING', 'WAITING', 'SHUTTING_DOWN']
+TERMINAL_STATES = ['TERMINATED', 'COMPLETED', 'FAILED']
 
 
 class ElasticMapreduceCluster():
@@ -37,8 +41,8 @@ class ElasticMapreduceCluster():
         self.jobflow = self.find_named_jobflow()
 
     def find_named_jobflow(self):
-        for cur_flow in self._emr.describe_jobflows():
-            if cur_flow.name == self.name and self.cluster_is_alive(cur_flow):
+        for cur_flow in self._emr.describe_jobflows(states=ALIVE_STATES):
+            if self.name == getattr(cur_flow, 'name', None):
                 return cur_flow
         return None
 
@@ -170,7 +174,7 @@ class ElasticMapreduceCluster():
 
     def cluster_is_alive(self, jobflow=None):
         jobflow = jobflow or self.jobflow
-        return jobflow.state not in ['TERMINATED', 'COMPLETED', 'FAILED']
+        return jobflow.state not in TERMINAL_STATES
 
     def terminate_if_necessary(self, name, timeout=3000):
         changed = False
@@ -193,6 +197,14 @@ class ElasticMapreduceCluster():
 
         if self.cluster_is_alive():
             raise RuntimeError('Timeout waiting for job flow to terminate.')
+
+    def get_metadata(self):
+        master_instance = self._ec2.get_only_instances(instance_ids=[self.jobflow.masterinstanceid])[0]
+        return {
+            'jobflow_id': self.jobflow.jobflowid,
+            'master_public_dns_name': master_instance.public_dns_name,
+            'master_private_ip': master_instance.private_ip_address
+        }
 
 
 def main():
@@ -221,18 +233,16 @@ def main():
         desired_state = arguments.pop('state')
         if desired_state == 'present':
             changed = cluster.provision_if_necessary(**arguments)
-            module.exit_json(
-                changed=changed,
-                jobflow_id=cluster.jobflow.jobflowid,
-                master_public_dns_name=cluster.jobflow.masterpublicdnsname
-            )
+            metadata = cluster.get_metadata()
+            metadata['changed'] = changed
+            module.exit_json(**metadata)
         elif desired_state == 'absent':
             changed = cluster.terminate_if_necessary(name)
             module.exit_json(changed=changed)
         else:
             raise ValueError('Unknown state requested: {0}'.format(desired_state))
-    except Exception, e:
-        module.fail_json(msg=str(e))
+    except Exception:
+        module.fail_json(msg=traceback.format_exc())
 
 
 # import module snippets

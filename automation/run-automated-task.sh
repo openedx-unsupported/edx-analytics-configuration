@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -ex
+
 VENV_ROOT=$WORKSPACE/venvs
 mkdir -p $VENV_ROOT
 
@@ -29,4 +31,4 @@ make -C analytics-tasks install
 # All arguments provided on the command line are passed through to the remote-task call.
 remote-task --job-flow-name="$CLUSTER_NAME" --branch $TASKS_BRANCH --wait --log-path $WORKSPACE/logs/ --remote-name automation --user $TASK_USER --secure-config-branch $SECURE_BRANCH --secure-config-repo $SECURE_REPO --secure-config $SECURE_CONFIG "$@"
 
-cat $WORKSPACE/logs/*
+cat $WORKSPACE/logs/* || true

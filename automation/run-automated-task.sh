@@ -25,6 +25,9 @@ if [ "$TERMINATE" = "true" ]; then
 fi
 
 . $TASKS_BIN/activate
+# Some requirements upgrade pip for us, and that can cause conflicts when installing
+# a second time. We upgrade pip before running the installs.
+pip install pip==6.0.6
 make -C analytics-tasks install
 
 # Define task on the command line, including the task name and all of its arguments.

@@ -1,0 +1,28 @@
+---
+
+- name: Provision cluster
+  hosts: localhost
+  gather_facts: False
+  vars:
+    - ami_version: 
+  tasks:
+    - name: provision EMR cluster
+      local_action:
+        module: emr
+        name: "{{ name }}"
+        keypair_name: "{{ keypair_name }}"
+        visible_to_all_users: yes
+        ami_version: 2.4.7
+        instance_groups:
+          master:
+            num_instances: 1
+            type: m1.small
+            market: ON_DEMAND
+      register: jobflow
+
+    - name: add master to group
+      local_action: >
+        add_host hostname={{ jobflow.master_private_ip }} groupname=launched_master ansible_ssh_user=hadoop ansible_connection=ssh
+
+    - name: display master IP address
+      debug: msg={{ jobflow.master_private_ip }}

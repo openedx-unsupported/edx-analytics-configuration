@@ -6,13 +6,21 @@
   vars:
     # The following vars should probably be overridden
     - name: ETL
-    - task_instance_num: 1
-    - task_instance_type: m1.medium
+    - instance_groups:
+        master:
+          num_instances: 1
+          type: m1.medium
+          market: ON_DEMAND
+        core:
+          num_instances: 2
+          type: m1.medium
+          market: ON_DEMAND
+        task:
+          num_instances: 1
+          type: m1.medium
+          market: SPOT
+          bidprice: 0.03
     - task_instance_bid: 0.03
-    - master_instance_num: 1
-    - master_instance_type: m1.small
-    - core_instance_num: 2
-    - core_instance_type: m1.small
     - bootstrap_actions: {}
     - steps: {}
     # The following vars may be overridden
@@ -34,20 +42,7 @@
         visible_to_all_users: yes
         job_flow_role: "{{ role }}"
         ami_version: "{{ ami_version }}"
-        instance_groups:
-          master:
-            num_instances: "{{ master_instance_num }}"
-            type: "{{ master_instance_type }}"
-            market: ON_DEMAND
-          core:
-            num_instances: "{{ core_instance_num }}"
-            type: "{{ core_instance_type }}"
-            market: ON_DEMAND
-          task:
-            num_instances: "{{ task_instance_num }}"
-            type: "{{ task_instance_type }}"
-            market: SPOT
-            bidprice: "{{ task_instance_bid }}"
+        instance_groups: $instance_groups
         bootstrap_actions: $bootstrap_actions
         steps: $steps
       register: jobflow

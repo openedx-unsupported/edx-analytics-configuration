@@ -6,23 +6,35 @@
   vars:
     # The following vars should probably be overridden
     - name: ETL
+    - master_instance_num: 1
+    - master_instance_type: m1.medium
+    - core_instance_num: 1
+    - core_instance_type: m1.medium
     - task_instance_num: 1
     - task_instance_type: m1.medium
     - task_instance_bid: 0.03
-    - master_instance_num: 1
-    - master_instance_type: m1.small
-    - core_instance_num: 2
-    - core_instance_type: m1.small
+    - instance_groups:
+        master:
+          num_instances: "{{ master_instance_num }}"
+          type: "{{ master_instance_type }}"
+          market: ON_DEMAND
+        core:
+          num_instances: "{{ core_instance_num }}"
+          type: "{{ core_instance_type }}"
+          market: ON_DEMAND
+        task:
+          num_instances: "{{ task_instance_num }}"
+          type: "{{ task_instance_type }}"
+          market: SPOT
+          bidprice: "{{ task_instance_bid }}"
     - bootstrap_actions: {}
     - steps: {}
-    # The following vars may be overridden
     - keypair_name: "{{ lookup('env', 'AWS_KEYPAIR_NAME') }}"
     - role: emr
     - ami_version: 2.4.7
-    # The following variables *must* be overridden
-    # - vpc_subnet_id: subnet-7bc4913d
-    # - user_info: []
-    # - log_uri: s3://some-bucket-name
+    - vpc_subnet_id: !!null
+    - user_info: []
+    - log_uri: !!null
   tasks:
     - name: provision EMR cluster
       local_action:
@@ -34,20 +46,7 @@
         visible_to_all_users: yes
         job_flow_role: "{{ role }}"
         ami_version: "{{ ami_version }}"
-        instance_groups:
-          master:
-            num_instances: "{{ master_instance_num }}"
-            type: "{{ master_instance_type }}"
-            market: ON_DEMAND
-          core:
-            num_instances: "{{ core_instance_num }}"
-            type: "{{ core_instance_type }}"
-            market: ON_DEMAND
-          task:
-            num_instances: "{{ task_instance_num }}"
-            type: "{{ task_instance_type }}"
-            market: SPOT
-            bidprice: "{{ task_instance_bid }}"
+        instance_groups: $instance_groups
         bootstrap_actions: $bootstrap_actions
         steps: $steps
       register: jobflow

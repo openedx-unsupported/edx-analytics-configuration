@@ -87,8 +87,11 @@ class ElasticMapreduceCluster():
         if steps is not None:
             parameters['steps'] = self.get_boto_step_specs(steps)
 
-        if 'vpc_subnet_id' in arguments:
-            parameters['api_params'] = { 'Instances.Ec2SubnetId': arguments.pop('vpc_subnet_id') }
+        vpc_subnet_id = arguments.pop('vpc_subnet_id', None)
+        if vpc_subnet_id:
+            parameters['api_params'] = {
+                'Instances.Ec2SubnetId': vpc_subnet_id
+            }
 
         parameters.update(arguments)
         return parameters
@@ -212,12 +215,12 @@ def main():
         argument_spec = dict(
             name                 = dict(required=True),
             availability_zone    = dict(),
-            job_flow_role        = dict(),
+            job_flow_role        = dict(default=None),
             instance_groups      = dict(),
             tags                 = dict(),
-            vpc_subnet_id        = dict(),
+            vpc_subnet_id        = dict(default=None),
             visible_to_all_users = dict(),
-            log_uri              = dict(),
+            log_uri              = dict(default=None),
             bootstrap_actions    = dict(),
             steps                = dict(),
             keypair_name         = dict(),

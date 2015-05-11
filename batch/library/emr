@@ -216,6 +216,7 @@ def main():
             name                 = dict(required=True),
             availability_zone    = dict(),
             job_flow_role        = dict(default=None),
+            service_role         = dict(default='EMR_DefaultRole'),
             instance_groups      = dict(),
             tags                 = dict(),
             vpc_subnet_id        = dict(default=None),

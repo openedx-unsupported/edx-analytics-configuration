@@ -53,12 +53,12 @@
         job_flow_role: "{{ role }}"
         ami_version: "{{ ami_version }}"
         release_label: "{{ release_label }}"
-        instance_groups: $instance_groups
-        bootstrap_actions: $bootstrap_actions
-        steps: $steps
-        applications: $applications
-        configurations: $configurations
-        ec2_attributes: $ec2_attributes
+        instance_groups: "{{ instance_groups }}"
+        bootstrap_actions: "{{ bootstrap_actions }}"
+        steps: "{{ steps }}"
+        applications: "{{ applications }}"
+        configurations: "{{ configurations }}"
+        ec2_attributes: "{{ ec2_attributes }}"
       register: jobflow
 
     - name: add master to group

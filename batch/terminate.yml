@@ -10,4 +10,5 @@
       local_action:
         module: emr
         name: "{{ name }}"
+        region: "{{ region }}"
         state: absent

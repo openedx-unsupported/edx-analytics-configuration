@@ -5,10 +5,11 @@ import re
 import time
 import traceback
 
+import boto.ec2
+import boto.emr
+
 from boto.exception import EC2ResponseError
-from boto.ec2.connection import EC2Connection
 from boto.emr.bootstrap_action import BootstrapAction
-from boto.emr.connection import EmrConnection
 from boto.emr.instance_group import InstanceGroup
 from boto.emr.step import (
     JarStep, StreamingStep, ScriptRunnerStep, InstallPigStep, PigStep, InstallHiveStep, HiveStep
@@ -34,10 +35,10 @@ TERMINAL_STATES = ['TERMINATED', 'COMPLETED', 'FAILED']
 
 class ElasticMapreduceCluster():
 
-    def __init__(self, name=None):
+    def __init__(self, name=None, region='us-east-1'):
         self.name = name
-        self._emr = EmrConnection()
-        self._ec2 = EC2Connection()
+        self._emr = boto.emr.connect_to_region(region)
+        self._ec2 = boto.ec2.connect_to_region(region)
         self.jobflow = self.find_named_jobflow()
 
     def find_named_jobflow(self):
@@ -214,6 +215,7 @@ def main():
     module = AnsibleModule(
         argument_spec = dict(
             name                 = dict(required=True),
+            region               = dict(default='us-east-1'),
             availability_zone    = dict(),
             job_flow_role        = dict(default=None),
             service_role         = dict(default='EMR_DefaultRole'),
@@ -231,9 +233,10 @@ def main():
     )
     arguments = dict(module.params)
     name = arguments.pop('name')
+    region = arguments.pop('region')
 
     try:
-        cluster = ElasticMapreduceCluster(name)
+        cluster = ElasticMapreduceCluster(name, region)
         desired_state = arguments.pop('state')
         if desired_state == 'present':
             changed = cluster.provision_if_necessary(**arguments)

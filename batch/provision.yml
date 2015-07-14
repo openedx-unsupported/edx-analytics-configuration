@@ -29,6 +29,7 @@
           bidprice: "{{ task_instance_bid }}"
     - bootstrap_actions: {}
     - steps: {}
+    - region: 'us-east-1'
     - keypair_name: "{{ lookup('env', 'AWS_KEYPAIR_NAME') }}"
     - role: emr
     - ami_version: 2.4.7
@@ -40,6 +41,7 @@
       local_action:
         module: emr
         name: "{{ name }}"
+        region: "{{ region }}"
         keypair_name: "{{ keypair_name }}"
         vpc_subnet_id: "{{ vpc_subnet_id }}"
         log_uri: "{{ log_uri }}"

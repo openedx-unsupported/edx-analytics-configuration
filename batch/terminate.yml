@@ -3,6 +3,8 @@
 - name: Terminate a cluster
   hosts: localhost
   gather_facts: False
+  vars:
+    - region: 'us-east-1'
   # The following vars must be overridden
   # name: ETL
   tasks:

@@ -34,7 +34,7 @@
 
 - name: virtualenv created
   command: >
-    virtualenv --python /usr/bin/python3 {{ jupyterhub_root }}/venv
+    /usr/local/bin/virtualenv --python /usr/bin/python3 {{ jupyterhub_root }}/venv
 
 - name: jupyterhub installed
   pip: >

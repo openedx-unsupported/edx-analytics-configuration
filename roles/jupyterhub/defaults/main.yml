@@ -1,0 +1,18 @@
+---
+
+jupyterhub_redhat_packages:
+  - nodejs
+  - npm
+  - python34
+  - python34-pip
+  - git
+
+jupyterhub_debian_packages:
+  - nodejs-legacy
+  - npm
+  - python3.4
+  - python3-pip
+  - git
+
+jupyterhub_root: /opt/jupyterhub
+jupyterhub_version: 0.2.0

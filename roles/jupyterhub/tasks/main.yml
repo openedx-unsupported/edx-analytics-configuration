@@ -1,0 +1,39 @@
+---
+
+- name: redhat node packages installed
+  yum: >
+    name={{ item }}
+    enablerepo=epel
+    state=present
+  when: ansible_pkg_mgr == "yum"
+  with_items: jupyterhub_redhat_packages
+
+- name: debian node packages installed
+  apt: >
+    name={{ item }}
+    state=present
+  when: ansible_pkg_mgr == "apt"
+  with_items: jupyterhub_debian_packages
+
+- name: proxy installed
+  npm: name=configurable-http-proxy global=yes
+
+- name: virtualenv installed
+  pip: name=virtualenv
+
+- name: project directory created
+  file: >
+    path={{ jupyterhub_root }}
+    state=directory
+
+- name: source checked out
+  git: >
+    repo=git+https://github.com/jupyter/jupyterhub.git
+    dest={{ jupyterhub_root }}/source
+    version={{ jupyterhub_version }}
+
+- name: jupyterhub installed
+  pip: >
+    name=jupyterhub
+    virtualenv_python=/usr/bin/python3
+    virtualenv={{ jupyterhub_root }}/venv

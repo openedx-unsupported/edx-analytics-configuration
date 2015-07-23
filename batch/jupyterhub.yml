@@ -1,0 +1,8 @@
+---
+
+- name: Deploy jupyterhub
+  hosts: all
+  gather_facts: True
+  sudo: True
+  roles:
+    - jupyterhub

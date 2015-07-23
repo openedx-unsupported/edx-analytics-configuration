@@ -1,0 +1,17 @@
+#!/bin/bash
+
+set -e
+
+BRANCH="${1:-master}"
+PLAYBOOK="$2"
+
+rm -rf /mnt/ansible-bootstrap
+mkdir -p /mnt/ansible-bootstrap
+cd /mnt/ansible-bootstrap
+wget -O config.tar.gz https://github.com/edx/edx-analytics-configuration/tarball/${BRANCH}
+tar -xzf config.tar.gz
+
+cd edx-edx-analytics-configuration*
+sudo pip-2.7 install -r requirements.txt
+
+/usr/local/bin/ansible-playbook -c local -i localhost, "$PLAYBOOK"

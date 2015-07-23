@@ -94,6 +94,11 @@ class ElasticMapreduceCluster():
                 'Instances.Ec2SubnetId': vpc_subnet_id
             }
 
+        additional_security_groups = arguments.pop('additional_master_security_groups', None) or []
+        api_params = parameters.setdefault('api_params', {})
+        for idx, security_group_id in enumerate(additional_security_groups):
+            api_params['Instances.AdditionalMasterSecurityGroups.members.{}'.format(idx + 1)] = security_group_id
+
         parameters.update(arguments)
         return parameters
 
@@ -229,6 +234,7 @@ def main():
             keypair_name         = dict(),
             ami_version          = dict(),
             state                = dict(default='present'),
+            additional_master_security_groups = dict(default=None)
         )
     )
     arguments = dict(module.params)

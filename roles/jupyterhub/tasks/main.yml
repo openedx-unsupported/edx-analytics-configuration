@@ -39,4 +39,4 @@
 - name: jupyterhub installed
   pip: >
     name=jupyterhub
-    virtualenv={{ jupyterhub_root }}/venv
+    executable={{ jupyterhub_root }}/venv/bin/pip

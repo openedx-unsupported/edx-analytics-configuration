@@ -28,7 +28,7 @@
 
 - name: source checked out
   git: >
-    repo=git+https://github.com/jupyter/jupyterhub.git
+    repo=https://github.com/jupyter/jupyterhub.git
     dest={{ jupyterhub_root }}/source
     version={{ jupyterhub_version }}
 

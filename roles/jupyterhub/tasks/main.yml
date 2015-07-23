@@ -32,8 +32,11 @@
     dest={{ jupyterhub_root }}/source
     version={{ jupyterhub_version }}
 
+- name: virtualenv created
+  command: >
+    virtualenv --python /usr/bin/python3 {{ jupyterhub_root }}/venv
+
 - name: jupyterhub installed
   pip: >
     name=jupyterhub
-    virtualenv_python=/usr/bin/python3
     virtualenv={{ jupyterhub_root }}/venv

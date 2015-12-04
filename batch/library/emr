@@ -384,7 +384,7 @@ def main():
             metadata['changed'] = changed
             module.exit_json(**metadata)
         elif desired_state == 'absent':
-            changed = cluster.terminate_if_necessary(name)
+            changed = cluster.terminate_if_necessary()
             module.exit_json(changed=changed)
         else:
             raise ValueError('Unknown state requested: {0}'.format(desired_state))

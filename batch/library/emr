@@ -1,164 +1,283 @@
 #!/usr/bin/env python
 
+"""
+Script for deploying and terminating EMR clusters, using boto3.
+
+For use with EMR ami_version 2.x and 3.x, and EMR release labels 4.0 and up.
+
+"""
+import boto3
 import os
 import re
 import time
 import traceback
 
-import boto.ec2
-import boto.emr
-
-from boto.exception import EC2ResponseError
-from boto.emr.bootstrap_action import BootstrapAction
-from boto.emr.instance_group import InstanceGroup
-from boto.emr.step import (
-    JarStep, StreamingStep, ScriptRunnerStep, InstallPigStep, PigStep, InstallHiveStep, HiveStep
-)
-
-
 POLLING_INTERVAL_SECONDS = 30
-DEFAULT_AMI_VERSION = '2.4.7'
-DEFAULT_INSTANCE_GROUPS = {}
-STEP_TYPE_MAP = {
-    'jar': JarStep,
-    'streaming': StreamingStep,
-    'script': ScriptRunnerStep,
-    'pig_install': InstallPigStep,
-    'pig': PigStep,
-    'hive_install': InstallHiveStep,
-    'hive': HiveStep,
-}
-# For a state flow diagram see - http://docs.aws.amazon.com/ElasticMapReduce/latest/DeveloperGuide/ProcessingCycle.html
-ALIVE_STATES = ['STARTING', 'BOOTSTRAPPING', 'RUNNING', 'WAITING', 'SHUTTING_DOWN']
-TERMINAL_STATES = ['TERMINATED', 'COMPLETED', 'FAILED']
 
+DEFAULT_REGION = 'us-east-1'
+DEFAULT_AMI_VERSION = 'latest'
+DEFAULT_INSTANCE_GROUPS = {}
+
+# For a state flow diagram see - http://docs.aws.amazon.com/ElasticMapReduce/latest/DeveloperGuide/ProcessingCycle.html
+ALIVE_STATES = ['STARTING', 'BOOTSTRAPPING', 'RUNNING', 'WAITING', 'TERMINATING']
+TERMINAL_STATES = ['TERMINATED', 'TERMINATED_WITH_ERRORS']
+
+# Define values that get configured separately but get mapped to the Instance substructure.
+INSTANCE_PARAMS = {
+    'hadoop_version': 'HadoopVersion',
+    'emr_managed_master_security_group': 'EmrManagedMasterSecurityGroup',
+    'emr_managed_slave_security_group': 'EmrManagedSlaveSecurityGroup',
+    'additional_master_security_groups': 'AdditionalMasterSecurityGroups',
+    'additional_slave_security_groups': 'AdditionalSlaveSecurityGroups',
+}
 
 class ElasticMapreduceCluster():
 
-    def __init__(self, name=None, region='us-east-1'):
+    def __init__(self, name=None, region=DEFAULT_REGION):
         self.name = name
-        self._emr = boto.emr.connect_to_region(region)
-        self._ec2 = boto.ec2.connect_to_region(region)
-        self.jobflow = self.find_named_jobflow()
+        self._emr = boto3.client('emr', region)
+        self.cluster_id = self._find_named_cluster(name)
 
-    def find_named_jobflow(self):
-        for cur_flow in self._emr.describe_jobflows(states=ALIVE_STATES):
-            if self.name == getattr(cur_flow, 'name', None):
-                return cur_flow
+    def _find_named_cluster(self, name):
+        for cur_cluster in self._emr.list_clusters(ClusterStates=ALIVE_STATES).get('Clusters', []):
+            if name == cur_cluster.get('Name'):
+                return cur_cluster.get('Id')
         return None
 
     def provision_if_necessary(
         self,
         timeout=3000,
-        tags=None,
         **remaining_args
     ):
         changed = False
-        if self.jobflow is None:
+        if self.cluster_id is None:
             params = self.get_run_jobflow_parameters(**remaining_args)
-            jobflow_id = self._emr.run_jobflow(self.name, **params)
-            self.add_tags(jobflow_id, tags)
+            response = self._emr.run_job_flow(**params)
+            self.cluster_id = response.get('JobFlowId')
             changed = True
-            self.jobflow = self._emr.describe_jobflow(jobflow_id)
 
         self.wait_for_cluster_to_launch(timeout)
         return changed
 
     def get_run_jobflow_parameters(self, **remaining_args):
         arguments = dict(remaining_args)
-        keypair_name = arguments.pop('keypair_name', os.getenv('AWS_KEYPAIR_NAME', None))
-        if keypair_name is None:
-            raise ValueError('Either keypair_name must be provided or AWS_KEYPAIR_NAME must be set in the environment.')
-        ami_version = arguments.pop('ami_version', DEFAULT_AMI_VERSION)
-        parameters = {
-            'keep_alive': True,
-            'ami_version': ami_version,
-            'visible_to_all_users': True,
-            'ec2_keyname': keypair_name,
-        }
+        parameters = self.get_boto_base_specs(arguments)
+
+        parameters['Instances'] = self.get_boto_instance_specs(arguments)
 
         instance_groups = arguments.pop('instance_groups', DEFAULT_INSTANCE_GROUPS)
-        parameters['instance_groups'] = self.get_boto_instance_group_specs(instance_groups)
+        parameters['Instances']['InstanceGroups'] = self.get_boto_instance_group_specs(instance_groups)
 
         bootstrap_actions = arguments.pop('bootstrap_actions', None)
         if bootstrap_actions is not None:
-            parameters['bootstrap_actions'] = self.get_boto_bootstrap_action_specs(bootstrap_actions)
+            parameters['BootstrapActions'] = self.get_boto_bootstrap_action_specs(bootstrap_actions)
 
         steps = arguments.pop('steps', None)
         if steps is not None:
-            parameters['steps'] = self.get_boto_step_specs(steps)
+            parameters['Steps'] = self.get_boto_step_specs(steps)
 
-        vpc_subnet_id = arguments.pop('vpc_subnet_id', None)
-        if vpc_subnet_id:
-            parameters['api_params'] = {
-                'Instances.Ec2SubnetId': vpc_subnet_id
-            }
-
-        parameters.update(arguments)
         return parameters
 
-    def add_tags(self, jobflow_id, tags):
-        if tags is None:
-            tags = {}
-        tags['ansible:emr:name'] = self.name
-        self._emr.add_tags(jobflow_id, tags)
+    def get_boto_base_specs(self, arguments):
+        ami_version = arguments.pop('ami_version', DEFAULT_AMI_VERSION)
+        release_label = arguments.pop('release_label')
+        log_uri = arguments.pop('log_uri')
+        job_flow_role = arguments.pop('job_flow_role')
+        service_role = arguments.pop('service_role')
+        visible_to_all_users = arguments.pop('visible_to_all_users')
+        tags = arguments.pop('tags') or []
+        tags.append({'Key': 'ansible:emr:name', 'Value': self.name})
+        applications = arguments.pop('applications', None)
+
+        parameters = {
+            'Name': self.name,
+            'LogUri': log_uri,
+            'VisibleToAllUsers': visible_to_all_users,
+            'JobFlowRole': job_flow_role,
+            'ServiceRole': service_role,
+            'Instances': [],
+            'Steps': [],
+            'BootstrapActions': [],
+            'Tags': tags,
+        }
+
+        # If a release label is provided, ignore the AMI version.
+        if release_label:
+            parameters['ReleaseLabel'] = release_label
+            if applications is not None:
+                parameters['Applications'] = self.get_boto_application_specs(applications)
+            configurations = arguments.pop('configurations')
+            if configurations:
+                parameters['Configurations'] = configurations
+            ec2_attributes = arguments.pop('ec2_attributes')
+            if ec2_attributes:
+                parameters['Ec2Attributes'] = ec2_attributes
+        else:
+            parameters['AmiVersion'] = ami_version
+            if applications is not None:
+                parameters['NewSupportedProducts'] = self.get_boto_application_specs(applications)
+
+        return parameters
+
+    def get_boto_instance_specs(self, arguments):
+        keypair_name = arguments.pop('keypair_name', os.getenv('AWS_KEYPAIR_NAME', None))
+        if keypair_name is None:
+            raise ValueError('Either keypair_name must be provided or AWS_KEYPAIR_NAME must be set in the environment.')
+
+        instance_specs = {
+            'Ec2KeyName': keypair_name,
+            'KeepJobFlowAliveWhenNoSteps': True,
+            'TerminationProtected': False,
+        }
+
+        # Specify either Availability zone or subnet, but not both.
+        availability_zone = arguments.pop('availability_zone', None)
+        vpc_subnet_id = arguments.pop('vpc_subnet_id', None)
+        if vpc_subnet_id and availability_zone:
+            raise ValueError('Must specify only one of availability_zone or vpc_subnet_id.')
+
+        if vpc_subnet_id:
+            instance_specs['Ec2SubnetId'] = vpc_subnet_id
+        elif availability_zone:
+            instance_specs['Placement'] = {'AvailabilityZone': availability_zone}
+
+        for arg_name, key_name in INSTANCE_PARAMS.iteritems():
+            arg_value = arguments.pop(arg_name, None)
+            if arg_value is not None:
+                instance_specs[key_name] = hadoop_version
+
+        return instance_specs;
 
     def get_boto_instance_group_specs(self, instance_group_configs):
         instance_group_specs = []
-
         for role, args in instance_group_configs.iteritems():
-            # copy the arguments, since we will be modifying them
-            args = dict(args)
-            # this name is not terribly useful, but required by boto, so pass in the role name
-            args['name'] = role
-            # boto expects roles MASTER, CORE, or TASK
-            args['role'] = role.upper()
+            num_instances = int(args['num_instances'])
+            if num_instances > 0:
+                instance_group = {
+                    'Name': role,
+                    'InstanceRole': role.upper(),
+                    'InstanceType': args['type'],
+                    'InstanceCount': num_instances,
+                }
+                if 'market' in args:
+                    instance_group['Market'] = args['market']
+                    if 'bidprice' in args:
+                        # Make sure the float is converted to a string.
+                        instance_group['BidPrice'] = str(args['bidprice'])
 
-            ig = InstanceGroup(**args)
-            if int(ig.num_instances) > 0:
-                instance_group_specs.append(ig)
+                instance_group_specs.append(instance_group)
 
         return instance_group_specs
 
     def get_boto_bootstrap_action_specs(self, bootstrap_action_configs):
         bootstrap_action_specs = []
-
         for name, spec in bootstrap_action_configs.iteritems():
             path = spec
-            args = None
+            args = []
             if isinstance(spec, dict):
                 path = spec.get('path')
-                args = spec.get('args')
+                args = spec.get('args', [])
 
-            bootstrap_action_specs.append(BootstrapAction(name, path, args))
+            action = {
+                'Name': name,
+                'ScriptBootstrapAction': {
+                    'Path': path,
+                    'Args': args,
+                }
+            }
+            bootstrap_action_specs.append(action)
 
         return bootstrap_action_specs
 
     def get_boto_step_specs(self, step_configs):
         steps = []
-
         for step_config in step_configs:
             step_type = step_config.pop('type', 'jar')
-            step_class = STEP_TYPE_MAP.get(step_type)
-            if step_class is None:
-                raise ValueError('Unknown step type "{0}"'.format(step_type))
 
-            steps.append(step_class(**step_config))
+            # Specify the path to the jar.
+            if 'jar' in step_config:
+                step_jar = step_config.pop('jar')
+            elif step_type == 'streaming':
+                step_jar = '/home/hadoop/contrib/streaming/hadoop-streaming.jar'
+            else:
+                step_jar = 's3://elasticmapreduce/libs/script-runner/script-runner.jar'
+
+            step = {
+                'Name': step_config.pop('name', step_type),
+                'HadoopJarStep': {
+                    'Jar': step_jar,
+                }
+            }
+
+            # Add optional arguments.
+            if 'main_class' in step_config:
+                step['HadoopJarStep']['MainClass'] = step_config['main_class']
+            if 'properties' in step_config:
+                step['HadoopJarStep']['Properties'] = step_config['properties']
+            if 'action_on_failure' in step_config:
+                step['ActionOnFailure'] = step_config['action_on_failure']
+
+            # Add support for specific step types.
+            if step_type in ['hive_install']:
+                step['HadoopJarStep']['Args'] = self.get_boto_install_hive_step_args(step_config)
+            elif step_type in ['pig_install']:
+                step['HadoopJarStep']['Args'] = self.get_boto_install_pig_step_args(step_config)
+            elif 'step_args' in step_config:
+                step['HadoopJarStep']['Args'] = step_config['step_args']
+
+            steps.append(step)
 
         return steps
+
+    def get_boto_install_hive_step_args(self, step_config):
+        hive_versions = step_config.pop('hive_version', 'latest')
+        hive_site = step_config.pop('hive_site', None)
+        args = [
+            's3://elasticmapreduce/libs/hive/hive-script',
+            '--base-path',
+            's3://elasticmapreduce/libs/hive/',
+            '--install-hive',
+            '--hive-versions',
+            hive_versions,
+        ]
+        if hive_site is not None:
+            args.append('--hive-site=%s' % hive_site)
+        return args
+
+    def get_boto_install_pig_step_args(self, step_config):
+        return [
+            's3://elasticmapreduce/libs/pig/pig-script',
+            '--base-path',
+            's3://elasticmapreduce/libs/pig/',
+            '--install-pig',
+            '--pig-versions',
+            step_config.pop('pig_version', 'latest'),
+        ]
+
+    def get_boto_application_specs(self, application_configs):
+        applications = []
+        if application_configs is None:
+            application_configs = []
+
+        for app_config in application_configs:
+            app = {
+                'Name': app_config['name'],
+                'Args': [],
+            }
+            if 'args' in app_config:
+                app['Args'] = app_config['args']
+            applications.append(app)
+
+        return applications
 
     def wait_for_cluster_to_launch(self, timeout):
         wait_timeout = time.time() + timeout
         while wait_timeout > time.time() and not self.cluster_is_ready():
-            self.jobflow = self._emr.describe_jobflow(self.jobflow.jobflowid)
 
             if not self.cluster_is_alive():
                 raise RuntimeError('Job flow failed to start.')
 
-            if not self.cluster_is_ready():
-                time.sleep(POLLING_INTERVAL_SECONDS)
-            else:
-                break
+            time.sleep(POLLING_INTERVAL_SECONDS)
 
         if not self.cluster_is_ready():
             # If the cluster is only partially built, terminate any residual machines
@@ -166,24 +285,32 @@ class ElasticMapreduceCluster():
             self.terminate_if_necessary(timeout)
             raise RuntimeError('Timeout waiting for job flow to initialize.')
 
-    def cluster_is_ready(self, jobflow=None):
-        jobflow = jobflow or self.jobflow
-        if jobflow.state not in ['WAITING']:
+    def cluster_is_ready(self, cluster_id=None):
+        cluster_id = cluster_id or self.cluster_id
+        state = self.get_cluster_state(cluster_id)
+
+        if state not in ['WAITING']:
             return False
         else:
-            for instance_group in jobflow.instancegroups:
-                if instance_group.state != 'RUNNING':
+            response = self._emr.list_instance_groups(ClusterId=cluster_id)
+            for instance_group in response['InstanceGroups']:
+                if instance_group['Status']['State'] != 'RUNNING':
                     return False
             return True
 
-    def cluster_is_alive(self, jobflow=None):
-        jobflow = jobflow or self.jobflow
-        return jobflow.state not in TERMINAL_STATES
+    def get_cluster_state(self, cluster_id=None):
+        cluster_id = cluster_id or self.cluster_id
+        cluster = self._emr.describe_cluster(ClusterId=cluster_id)
+        return cluster['Cluster']['Status']['State']
 
-    def terminate_if_necessary(self, name, timeout=3000):
+    def cluster_is_alive(self, cluster_id=None):
+        state = self.get_cluster_state(cluster_id)
+        return state not in TERMINAL_STATES
+
+    def terminate_if_necessary(self, timeout=3000):
         changed = False
-        if self.jobflow is not None:
-            self._emr.terminate_jobflow(self.jobflow.jobflowid)
+        if self.cluster_id is not None:
+            self._emr.terminate_job_flows(JobFlowIds=[self.cluster_id])
             changed = True
 
             self.wait_for_cluster_to_terminate(timeout)
@@ -192,59 +319,72 @@ class ElasticMapreduceCluster():
     def wait_for_cluster_to_terminate(self, timeout):
         wait_timeout = time.time() + timeout
         while wait_timeout > time.time() and self.cluster_is_alive():
-            self.jobflow = self._emr.describe_jobflow(self.jobflow.jobflowid)
-
-            if self.cluster_is_alive():
-                time.sleep(POLLING_INTERVAL_SECONDS)
-            else:
-                break
+            time.sleep(POLLING_INTERVAL_SECONDS)
 
         if self.cluster_is_alive():
             raise RuntimeError('Timeout waiting for job flow to terminate.')
 
     def get_metadata(self):
-        master_instance = self._ec2.get_only_instances(instance_ids=[self.jobflow.masterinstanceid])[0]
+        cluster = self._emr.describe_cluster(ClusterId=self.cluster_id)
+        public_dns_name = cluster['Cluster']['MasterPublicDnsName']
+        result = self._emr.list_instances(ClusterId=self.cluster_id, InstanceGroupTypes=['MASTER'])
+        # Assume that there is only one master instance.
+        master_instance = result['Instances'][0]
+        private_ip_address = master_instance['PrivateIpAddress']
+        # public_dns_name should equal master_instance['PublicDnsName'].
         return {
-            'jobflow_id': self.jobflow.jobflowid,
-            'master_public_dns_name': master_instance.public_dns_name,
-            'master_private_ip': master_instance.private_ip_address
-        }
-
+            'jobflow_id': self.cluster_id,
+            'master_public_dns_name': public_dns_name,
+            'master_private_ip': private_ip_address,
+         }
 
 def main():
     module = AnsibleModule(
         argument_spec = dict(
-            name                 = dict(required=True),
+            state                = dict(default='present'),
             region               = dict(default='us-east-1'),
-            availability_zone    = dict(),
+            # Top-level parameters:
+            name                 = dict(required=True),
+            log_uri              = dict(default=None),
+            ami_version          = dict(),
+            release_label        = dict(default=None),
+            visible_to_all_users = dict(),
             job_flow_role        = dict(default=None),
             service_role         = dict(default='EMR_DefaultRole'),
+            # Instance-level parameters:
             instance_groups      = dict(),
-            tags                 = dict(),
+            keypair_name         = dict(),
+            availability_zone    = dict(),
+            hadoop_version       = dict(default=None),
             vpc_subnet_id        = dict(default=None),
-            visible_to_all_users = dict(),
-            log_uri              = dict(default=None),
+            emr_managed_master_security_group = dict(default=None),
+            emr_managed_slave_security_group = dict(default=None),
+            additional_master_security_groups = dict(default=None),
+            additional_slave_security_groups = dict(default=None),
+            # Additional parameters:
             bootstrap_actions    = dict(),
             steps                = dict(),
-            keypair_name         = dict(),
-            ami_version          = dict(),
-            state                = dict(default='present'),
+            tags                 = dict(),
+            applications         = dict(),
+            # Release-label parameters:
+            configurations       = dict(),
+            ec2_attributes       = dict(),
         )
     )
     arguments = dict(module.params)
     name = arguments.pop('name')
     region = arguments.pop('region')
+    desired_state = arguments.pop('state')
 
     try:
         cluster = ElasticMapreduceCluster(name, region)
-        desired_state = arguments.pop('state')
         if desired_state == 'present':
             changed = cluster.provision_if_necessary(**arguments)
             metadata = cluster.get_metadata()
             metadata['changed'] = changed
             module.exit_json(**metadata)
         elif desired_state == 'absent':
-            changed = cluster.terminate_if_necessary(name)
+            changed = cluster.terminate_if_necessary()
             module.exit_json(changed=changed)
         else:
             raise ValueError('Unknown state requested: {0}'.format(desired_state))

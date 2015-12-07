@@ -108,26 +108,20 @@
   when: item.type is defined and item.type == 'admin' and item.get('state', 'present') == 'present'
   with_items: user_info
 
-# authorized_keys2 used here so that personal
-# keys can be copied to authorized_keys
-# force is set to yes here, otherwise the keys
+# authorized_keys2 WAS used here so that personal
+# keys can be copied to authorized_keys,
+# BUT authorized_keys2 is not working with newer AMIs
+# from EMR, so revert to using authorized_keys.
+# Force is set to yes here, otherwise the keys
 # won't update if they haven't changed on the github
-# side
-- name: copy github key[s] to .ssh/authorized_keys2
+# side.
+- name: copy github key[s] to .ssh/authorized_keys
   get_url: >
     url=https://github.com/{{ item.name }}.keys
     force=yes
-    dest=/home/{{ item.name }}/.ssh/authorized_keys2 mode=0640
-    owner={{ item.name }}
-  when: item.github is defined and item.get('state', 'present') == 'present'
-  with_items: user_info
-
-- name: copy additional authorized keys
-  copy: >
-    content="{{ '\n'.join(item.authorized_keys) }}"
     dest=/home/{{ item.name }}/.ssh/authorized_keys mode=0640
     owner={{ item.name }}
-  when: item.authorized_keys is defined and item.get('state', 'present') == 'present'
+  when: item.github is defined and item.get('state', 'present') == 'present'
   with_items: user_info
 
 - name: create bashrc file for normal users

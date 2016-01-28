@@ -328,8 +328,9 @@ class ElasticMapreduceCluster():
         cluster = self._emr.describe_cluster(ClusterId=self.cluster_id)
         public_dns_name = cluster['Cluster']['MasterPublicDnsName']
         result = self._emr.list_instances(ClusterId=self.cluster_id, InstanceGroupTypes=['MASTER'])
-        # Assume that there is only one master instance.
-        master_instance = result['Instances'][0]
+        # Assume that there is only one master instance.  Since there may be failures in creating
+        # instances before there is a success, choose the last one.
+        master_instance = result['Instances'][-1]
         private_ip_address = master_instance['PrivateIpAddress']
         # public_dns_name should equal master_instance['PublicDnsName'].
         return {

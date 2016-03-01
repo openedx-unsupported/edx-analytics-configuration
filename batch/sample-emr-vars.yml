@@ -17,6 +17,8 @@ steps:
   - type: script
     name: "Install Sqoop"
     step_args: [ "s3://some-s3-bucket/install-sqoop", "s3://some-s3-bucket" ]
+    # You may want to set this to CANCEL_AND_WAIT while debugging step failures.
+    action_on_failure: TERMINATE_JOB_FLOW
 
 # The following variables *must* be overridden
 vpc_subnet_id: subnet-30346e76

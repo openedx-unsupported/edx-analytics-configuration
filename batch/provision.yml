@@ -34,7 +34,7 @@
     - ec2_attributes: {}
     - region: 'us-east-1'
     - keypair_name: "{{ lookup('env', 'AWS_KEYPAIR_NAME') }}"
-    - role: emr
+    - role: EMR_EC2_DefaultRole
     - ami_version: 2.4.11
     - release_label: ''
     - vpc_subnet_id: !!null

@@ -65,6 +65,24 @@ debian_patch() {
   sudo mv /tmp/sources.list.bk /etc/apt/sources.list
   sudo apt-get clean
   sudo /etc/init.d/ssh restart
+  sudo mv /etc/apt/sources.list /tmp/sources.list.bk
+  cat > /tmp/sources.list.lts << EOL
+deb http://http.us.debian.org/debian squeeze-lts main contrib non-free
+deb http://security.debian.org squeeze/updates main contrib non-free
+EOL
+  sudo cp /tmp/sources.list.lts /etc/apt/sources.list
+  sudo apt-get clean
+  sudo apt-get update
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --force-yes libmysqlclient-dev python-dev libssl-dev libxml2-dev libxslt1-dev
+  cat > /tmp/sources.list.new << EOL
+deb http://http.us.debian.org/debian wheezy main contrib non-free
+deb http://security.debian.org wheezy/updates main contrib non-free
+EOL
+  sudo mv /tmp/sources.list.new /etc/apt/sources.list
+  sudo apt-get clean
+  sudo apt-get update
+  sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --force-yes libatlas3gf-base libffi-dev libpq-dev
+  sudo mv /tmp/sources.list.lts /etc/apt/sources.list
 }
 
 main() {

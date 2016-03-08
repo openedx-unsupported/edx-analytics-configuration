@@ -171,12 +171,10 @@ class ElasticMapreduceCluster():
 
     def get_boto_bootstrap_action_specs(self, bootstrap_action_configs):
         bootstrap_action_specs = []
-        for name, spec in bootstrap_action_configs.iteritems():
-            path = spec
-            args = []
-            if isinstance(spec, dict):
-                path = spec.get('path')
-                args = spec.get('args', [])
+        for action_config in bootstrap_action_configs:
+            name = action_config.pop('name')
+            path = action_config.pop('path')
+            args = action_config.pop('args', [])
 
             action = {
                 'Name': name,

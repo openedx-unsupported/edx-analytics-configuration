@@ -10,7 +10,7 @@ master_instance_num: 1
 master_instance_type: m1.small
 
 bootstrap_actions:
-  ganglia:
+  - name: ganglia
     path: s3://elasticmapreduce/bootstrap-actions/install-ganglia
 steps:
   - type: hive_install

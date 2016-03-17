@@ -65,6 +65,11 @@ debian_patch() {
   sudo mv /tmp/sources.list.bk /etc/apt/sources.list
   sudo apt-get clean
   sudo /etc/init.d/ssh restart
+  sudo mv /etc/apt/sources.list /tmp/sources.list.bk
+  sudo sh -c 'echo "deb http://security.debian.org squeeze/updates main contrib non-free" > /etc/apt/sources.list'
+  mkdir /mnt/tmp/packages/
+  sudo -u hadoop bash -c '. /home/hadoop/.bashrc && hadoop dfs -get s3://edx-analytics-public/packages/* /mnt/tmp/packages/'
+  sudo dpkg -i /mnt/tmp/packages/*.deb
 }
 
 main() {

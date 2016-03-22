@@ -1,7 +1,7 @@
 ---
 
 - name: Modify Users
-  hosts: "{{ hosts }}""
+  hosts: $hosts
   gather_facts: False
   sudo: True
   roles:

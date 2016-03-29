@@ -28,9 +28,9 @@
           market: SPOT
           bidprice: "{{ task_instance_bid }}"
     - bootstrap_actions: {}
-    - steps: {}
-    - applications: {}
-    - configurations: {}
+    - steps: []
+    - applications: []
+    - configurations: []
     - ec2_attributes: {}
     - region: 'us-east-1'
     - keypair_name: "{{ lookup('env', 'AWS_KEYPAIR_NAME') }}"

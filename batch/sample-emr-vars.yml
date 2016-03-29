@@ -1,5 +1,7 @@
 ---
-# The following variables should probably be overridden
+# The following variables should probably be overridden.
+# Important: Don't use anything smaller than m1.medium for any of these
+# instances, or provisioning will fail.
 name: ETL
 task_instance_num: 1
 task_instance_type: m1.medium
@@ -7,13 +9,15 @@ task_instance_bid: 0.03
 core_instance_num: 1
 core_instance_type: m1.medium
 master_instance_num: 1
-master_instance_type: m1.small
+master_instance_type: m1.medium
 
-bootstrap_actions:
-  ganglia:
-    path: s3://elasticmapreduce/bootstrap-actions/install-ganglia
+applications:
+  - name: hadoop
+  - name: ganglia
+  - name: hive
+  - name: pig
+  - name: sqoop-sandbox
 steps:
-  - type: hive_install
   - type: script
     name: "Install Sqoop"
     step_args: [ "s3://some-s3-bucket/install-sqoop", "s3://some-s3-bucket" ]

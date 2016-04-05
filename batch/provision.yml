@@ -63,10 +63,10 @@
 
     - name: add master to group
       local_action: >
-        add_host hostname={{ jobflow.master_private_ip }} groupname=launched_master ansible_ssh_user=hadoop ansible_connection=ssh
+        add_host hostname={{ jobflow.master_public_dns_name }} groupname=launched_master ansible_ssh_user=hadoop ansible_connection=ssh
 
-    - name: display master IP address
-      debug: msg={{ jobflow.master_private_ip }}
+    - name: display master DNS name
+      debug: msg={{ jobflow.master_public_dns_name }}
 
     - name: display job flow ID
       debug: msg={{ jobflow.jobflow_id }}

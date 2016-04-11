@@ -4,6 +4,8 @@ jenkins_group: "edx"
 jenkins_server_name: "jenkins-ci.analytics.edx.org"
 jenkins_port: 8080
 
+jenkins_prefer_ipv4: true
+
 jenkins_version: "1.559"
 jenkins_deb_url: "http://pkg.jenkins-ci.org/debian/binary/jenkins_{{ jenkins_version }}_all.deb"
 jenkins_deb: "jenkins_{{ jenkins_version }}_all.deb"

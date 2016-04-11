@@ -3,7 +3,11 @@ server {
   server_name {{ jenkins_server_name }};
 
   location / {
+    {% if jenkins_prefer_ipv4 %}
     proxy_pass              http://localhost:{{ jenkins_port }};
+    {% else %}
+    proxy_pass              http://[::1]:{{ jenkins_port }};
+    {% endif %}
 
     {% if jenkins_protocol == 'https' %}
     # Rewrite HTTPS requests from WAN to HTTP requests on LAN

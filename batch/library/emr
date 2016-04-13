@@ -88,6 +88,7 @@ class ElasticMapreduceCluster():
         tags = arguments.pop('tags') or []
         tags.append({'Key': 'ansible:emr:name', 'Value': self.name})
         applications = arguments.pop('applications', None)
+        configurations = arguments.pop('configurations', None)
 
         parameters = {
             'Name': self.name,
@@ -106,9 +107,8 @@ class ElasticMapreduceCluster():
             parameters['ReleaseLabel'] = release_label
             if applications is not None:
                 parameters['Applications'] = self.get_boto_application_specs(applications)
-            configurations = arguments.pop('configurations')
-            if configurations:
-                parameters['Configurations'] = configurations
+            if configurations is not None:
+                parameters['Configurations'] = self.get_boto_configuration_specs(configurations)
             ec2_attributes = arguments.pop('ec2_attributes')
             if ec2_attributes:
                 parameters['Ec2Attributes'] = ec2_attributes
@@ -269,6 +269,27 @@ class ElasticMapreduceCluster():
             applications.append(app)
 
         return applications
+
+    def get_boto_configuration_specs(self, configs):
+        def get_configuration_spec(config):
+            spec = {
+                'Classification': config['classification']
+            }
+            if 'properties' in config:
+                spec['Properties'] = config['properties']
+            if 'configurations' in config:
+                nested_specs = []
+                for nested_config in config['configurations']:
+                    nested_specs.append(get_configuration_spec(nested_config))
+                spec['Configurations'] = nested_specs
+            return spec
+
+        configuration_specs = []
+        for config in configs:
+            spec = get_configuration_spec(config)
+            configuration_specs.append(spec)
+
+        return configuration_specs
 
     def wait_for_cluster_to_launch(self, timeout):
         wait_timeout = time.time() + timeout

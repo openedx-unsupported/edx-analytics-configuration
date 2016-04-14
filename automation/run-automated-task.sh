@@ -31,7 +31,7 @@ if [ "$TERMINATE" = "true" ]; then
 fi
 
 . $TASKS_BIN/activate
-make -C analytics-tasks install
+make -C analytics-tasks bootstrap
 
 TASKS_REPO=${TASKS_REPO:-https://github.com/edx/edx-analytics-pipeline.git}
 

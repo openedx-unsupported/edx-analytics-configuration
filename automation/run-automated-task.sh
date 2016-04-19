@@ -7,8 +7,14 @@ mkdir -p $VENV_ROOT
 
 rm -rf $WORKSPACE/logs
 
-virtualenv $VENV_ROOT/analytics-tasks
-virtualenv $VENV_ROOT/analytics-configuration
+if [ ! -d "$VENV_ROOT/analytics-tasks" ]
+then
+    virtualenv $VENV_ROOT/analytics-tasks
+fi
+if [ ! -d "$VENV_ROOT/analytics-configuration" ]
+then
+    virtualenv $VENV_ROOT/analytics-configuration
+fi
 
 TASKS_BIN=$VENV_ROOT/analytics-tasks/bin
 CONF_BIN=$VENV_ROOT/analytics-configuration/bin

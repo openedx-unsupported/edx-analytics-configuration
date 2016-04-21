@@ -23,8 +23,7 @@ ALIVE_STATES = ['STARTING', 'BOOTSTRAPPING', 'RUNNING', 'WAITING', 'TERMINATING'
 TERMINAL_STATES = ['TERMINATED', 'TERMINATED_WITH_ERRORS']
 
 # Define values that get configured separately but get mapped to the Instance substructure.
-INSTANCE_PARAMS = {
-    'hadoop_version': 'HadoopVersion',
+SECURITY_GROUPS = {
     'emr_managed_master_security_group': 'EmrManagedMasterSecurityGroup',
     'emr_managed_slave_security_group': 'EmrManagedSlaveSecurityGroup',
     'additional_master_security_groups': 'AdditionalMasterSecurityGroups',
@@ -141,12 +140,16 @@ class ElasticMapreduceCluster():
         elif availability_zone:
             instance_specs['Placement'] = {'AvailabilityZone': availability_zone}
 
-        for arg_name, key_name in INSTANCE_PARAMS.iteritems():
+        hadoop_version = arguments.pop('hadoop_version', None)
+        if hadoop_version:
+            instance_specs['HadoopVersion'] = hadoop_version
+
+        for arg_name, key_name in SECURITY_GROUPS.iteritems():
             arg_value = arguments.pop(arg_name, None)
             if arg_value is not None:
-                instance_specs[key_name] = hadoop_version
+                instance_specs[key_name] = arg_value
 
-        return instance_specs;
+        return instance_specs
 
     def get_boto_instance_group_specs(self, instance_group_configs):
         instance_group_specs = []

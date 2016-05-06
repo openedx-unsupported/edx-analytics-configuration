@@ -41,6 +41,7 @@
     - user_info: []
     - log_uri: !!null
     - additional_master_security_groups: []
+    - additional_slave_security_groups: []
   tasks:
     - name: provision EMR cluster
       local_action:
@@ -61,6 +62,7 @@
         configurations: $configurations
         ec2_attributes: $ec2_attributes
         additional_master_security_groups: $additional_master_security_groups
+        additional_slave_security_groups: $additional_slave_security_groups
       register: jobflow
 
     - name: add master to group

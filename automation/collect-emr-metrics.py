@@ -1,6 +1,7 @@
 import json
 import requests
 import boto3
+from sys import exit
 from yarn_api_client import HistoryServer
 
 
@@ -16,6 +17,21 @@ def query_metadata_service(path=''):
   except Exception as e:
     print "[get-counters] exception when querying instance metadata service for path '{}': {}".format(path, e)
     return None
+
+
+def get_cluster_region():
+  """
+  Gets the AWS region this cluster is running in.
+  """
+  node_az = query_metadata_service('placement/availability-zone')
+  # node_az is the full AZ identifier i.e. us-east-1d so we want to take everything
+  # but the last character, which gives us the region.  Historically, we have no reason
+  # to believe that AZs will start to look like us-east-1tp or anything, so I think
+  # this is a reasonably safe bet.
+  if node_az is not None:
+    return node_az[:-1]
+
+  return None
 
 
 def get_local_address():
@@ -37,9 +53,12 @@ def get_job_flow_id():
   Gets the job flow ID that this instance belongs to.
   """
   job_flow_id = None
-  with open('/mnt/var/lib/info/job-flow.json', 'r') as job_flow_file:
-    parsed = json.loads(job_flow_file.read())
-    job_flow_id = parsed.get('jobFlowId', None)
+  try:
+    with open('/mnt/var/lib/info/job-flow.json', 'r') as job_flow_file:
+      parsed = json.loads(job_flow_file.read())
+      job_flow_id = parsed.get('jobFlowId', None)
+  except:
+    print "[get-counters] Error reading job flow information.  Not on AWS/EMR?"
 
   return job_flow_id
 
@@ -49,11 +68,17 @@ def get_cluster_name():
   Gets the name of the EMR cluster.
   """
   cluster_id = get_job_flow_id()
+  if cluster_id is not None:
+    try:
+      emr = boto3.client('emr', region_name=get_cluster_region())
+      cluster = emr.describe_cluster(ClusterId=cluster_id)
 
-  emr = boto3.client('emr')
-  cluster = emr.describe_cluster(ClusterId=cluster_id)
+      return cluster['Cluster']['Name']
+    except:
+      print "[get-counters] Error querying EMR API for cluster name"
+      return None
 
-  return cluster['Cluster']['Name']
+  return None
 
 
 def get_context():
@@ -119,19 +144,33 @@ def facet_metrics(metrics, templates, context={}):
 
   Thus, with a metric of "my.lil.metric", with the tag "foobar" having a value of "quux", and a template of
   "{foobar}.{metric_name}", we'd get "quux.my.lil.metric".
+
+  Important note: if a tag/piece of context is null, but part of a template, it will get dropped.  That is to say,
+  for someone running this not on EMR, we'd be missing the cluster name, job flow ID, etc.  When the metric is
+  formatted, these would initially be 'None.' for each of those spots, but we remove those entries. If our template
+  was:
+
+    edx.analytics.emr.{cluster}.{flow}.hadoop.counters.foo.bar
+
+  it would end up as:
+
+    edx.analytics.emr.hadoop.counters.foo.bar
+
+  instead.
   """
   output_metrics = []
 
   for metric, data in metrics.iteritems():
     # Merge our context with any tags for the metric.
     merged_context = context.copy()
-    merged_context.update(data.get('tags', {}))
-    merged_context['metric_name'] = metric
+    merged_context.update(data.get('context', {}))
+    merged_context['metric'] = metric
 
     # For each "template", feed it in the context so it can be rendered, giving us our transformed metric name.
     data_value = data.get('value', 0)
     for template in templates:
       faceted_metric = template.format(**merged_context)
+      faceted_metric = faceted_metric.replace('None.', '')
       output_metrics.append((faceted_metric, data_value))
 
   return output_metrics
@@ -159,13 +198,29 @@ def collect_metrics(metric_templates):
   # Grab all jobs from the history server.
   hs = HistoryServer(local_address)
   response = hs.jobs()
-  for job in response.data.get('jobs', {}).get('job', []):
+
+  jobs = response.data.get('jobs', {})
+  if jobs is None:
+    print "[get-counters] HistoryServer indicates no jobs have run."
+    exit(0)
+
+  job_visits = {}
+  jobs = jobs.get('job', [])
+  for job in jobs:
     # Grab details about the job so we get the full name.
-    job_info = hs.job(job['id'])
+    job_id = job['id']
+    job_info = hs.job(job_id)
     job_info = job_info.data['job']
 
     job_name = get_job_name_from_luigi_task_id(job_info['name'])
     print "[get-counters] Found job '{}' (id: {})".format(job_name, job['id'])
+
+    # Adjust job name to include a zero-based counter if we've seen it before.  This is kind of weird because
+    # it only makes "sense" in the context of a given application i.e. to differentiate Sqoop import tasks
+    # from one another, and it may change over time (size of list and thus the indexes) and so be not AS useful
+    # for over-time analysis, but it suffices because the indexing will be accurate within a single job flow.
+    job_index = job_visits.get(job_name, 0)
+    job_visits[job_name] = job_index + 1
 
     job_counters = hs.job_counters(job['id'])
     job_counters = job_counters.data['jobCounters']
@@ -184,8 +239,10 @@ def collect_metrics(metric_templates):
 
           formatted_metrics[full_metric_path] = {
             'value': metric_value,
-            'tags': {
-              'job_name': job_name
+            'context': {
+              'job_id': job['id'],
+              'job_name': job_name,
+              'job_index': job_index
             }
           }
 
@@ -197,7 +254,9 @@ if __name__ == "__main__":
   # Define a list of metric name templates, which also us to take in a generated metric,
   # and generate a new version, or versions, based on the template.
   metric_templates = [
-    'edx.analytics.emr.{cluster_name}.{job_flow_id}.{instance_id}.{job_name}.{metric}'
+    'edx.analytics.emr.{cluster_name}.{job_flow_id}.{job_name}.{job_index}.{metric}'
   ]
 
-  print json.dumps(collect_metrics(metric_templates))
+  metrics = collect_metrics(metric_templates)
+  print "Total metrics: {}".format(len(metrics))
+  print json.dumps(metrics)

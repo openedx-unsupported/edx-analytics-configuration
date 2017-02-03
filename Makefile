@@ -14,6 +14,10 @@ provision.emr: deps
 terminate.emr: deps
 	ansible-playbook --connection local -i 'localhost,' batch/terminate.yml -e "$$EXTRA_VARS"
 
+# We actually connect to the master node, hence the lack of a local connection.
+collect.metrics: deps inventory.refresh
+	ansible-playbook batch/collect.yml -e "$$EXTRA_VARS"
+
 inventory.refresh:
 	./plugins/ec2.py --refresh-cache 2>/dev/null >/dev/null
 

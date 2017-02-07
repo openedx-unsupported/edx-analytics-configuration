@@ -9,4 +9,4 @@
     - analytics_config: "{{ analytics_root }}/config/analytics-tasks"
   tasks:
     - name: run script
-      command: "{{ analytics_root }}/venv/bin/python {{ analytics_scripts }}/scripts/collect-hadoop-metrics.py {{ analytics_config }}/collect-hadoop-metrics.yaml"
+      command: "{{ analytics_root }}/venv/bin/python {{ analytics_scripts }}/collect-hadoop-metrics.py {{ analytics_config }}/collect-hadoop-metrics.yaml"

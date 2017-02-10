@@ -16,7 +16,7 @@ terminate.emr: deps
 
 # We actually connect to the master node, hence the lack of a local connection.
 collect.metrics: deps inventory.refresh
-	ansible-playbook -u "$$TASK_USER" batch/collect.yml -e "$$EXTRA_VARS"
+	ansible-playbook -vvvv -u "$$TASK_USER" batch/collect.yml -e "$$EXTRA_VARS" || true
 
 inventory.refresh:
 	./plugins/ec2.py --refresh-cache 2>/dev/null >/dev/null

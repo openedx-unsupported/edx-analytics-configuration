@@ -10,3 +10,7 @@
   tasks:
     - name: run script
       command: "{{ analytics_root }}/venv/bin/python {{ analytics_scripts }}/collect-hadoop-metrics.py {{ analytics_config }}/collect-hadoop-metrics.yaml"
+      register: collection
+    - name: print script output
+      debug:
+        msg: "{{ collection.stdout_lines }}"

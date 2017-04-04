@@ -6,8 +6,11 @@ NAME=jenkins
 # location of java
 JAVA=/usr/bin/java
 
+# Prefer IPv4 stack
+PREFER_IPV4="-Djava.net.preferIPv4Stack={{ jenkins_prefer_ipv4 }}"
+
 # arguments to pass to java
-JAVA_ARGS="-Djava.awt.headless=true -Djava.io.tmpdir=/var/tmp -Xmx{{ jenkins_heap_size }}"  # Allow graphs etc. to work even when an X server is present
+JAVA_ARGS="-Djava.awt.headless=true -Djava.io.tmpdir=/var/tmp -Xmx{{ jenkins_heap_size }} $PREFER_IPV4"  # Allow graphs etc. to work even when an X server is present
 
 PIDFILE=/var/run/jenkins/jenkins.pid
 

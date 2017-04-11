@@ -75,6 +75,21 @@
     - name: display job flow ID
       debug: msg={{ jobflow.jobflow_id }}
 
+- name: check the current Java version
+  hosts: launched_master
+  gather_facts: False
+  sudo: True
+  tasks:
+    - name: check Java version
+      shell: "java -version"
+      register: java_version
+    - name: check Java package version
+      shell: "rpm -qa | grep java"
+      register: java_pkg_version
+    - name: show Java version
+      debug: msg="{{ java_version.stdout }}"
+    - name: show Java package version
+      debug: msg="{{ java_pkg_version.stdout }}"
 
 - name: Configure SSH access to cluster
   hosts: launched_master

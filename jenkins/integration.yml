@@ -8,6 +8,11 @@
       - mysql-client
       - zip
       - xvfb
+      - libatlas3gf-base
+      - libssl-dev
+      - libffi-dev
+      - libpq-dev
+      - python-dev
   roles:
     - python2.6
     - s3cmd

@@ -18,6 +18,8 @@ DEFAULT_REGION = 'us-east-1'
 DEFAULT_AMI_VERSION = 'latest'
 DEFAULT_INSTANCE_GROUPS = {}
 
+MASTER_ROLE = u'master'
+
 # For a state flow diagram see - http://docs.aws.amazon.com/ElasticMapReduce/latest/DeveloperGuide/ProcessingCycle.html
 ALIVE_STATES = ['STARTING', 'BOOTSTRAPPING', 'RUNNING', 'WAITING', 'TERMINATING']
 TERMINAL_STATES = ['TERMINATED', 'TERMINATED_WITH_ERRORS']
@@ -36,6 +38,7 @@ class ElasticMapreduceCluster():
         self.name = name
         self._emr = boto3.client('emr', region)
         self.cluster_id = self._find_named_cluster(name)
+        self.is_instance_fleet = False
 
     def _find_named_cluster(self, name):
         for cur_cluster in self._emr.list_clusters(ClusterStates=ALIVE_STATES).get('Clusters', []):
@@ -64,8 +67,15 @@ class ElasticMapreduceCluster():
 
         parameters['Instances'] = self.get_boto_instance_specs(arguments)
 
+        instance_fleets = arguments.pop('instance_fleets', {})
         instance_groups = arguments.pop('instance_groups', DEFAULT_INSTANCE_GROUPS)
-        parameters['Instances']['InstanceGroups'] = self.get_boto_instance_group_specs(instance_groups)
+
+        if instance_fleets is None:
+            self.is_instance_fleet = False
+            parameters['Instances']['InstanceGroups'] = self.get_boto_instance_group_specs(instance_groups)
+        else:
+            self.is_instance_fleet = True
+            parameters['Instances']['InstanceFleets'] = self.get_boto_instance_fleet_specs(instance_fleets)
 
         bootstrap_actions = arguments.pop('bootstrap_actions', None)
         if bootstrap_actions is not None:
@@ -136,6 +146,9 @@ class ElasticMapreduceCluster():
             raise ValueError('Must specify only one of availability_zone or vpc_subnet_id.')
 
         if vpc_subnet_id:
+          if isinstance(vpc_subnet_id, list):
+            instance_specs['Ec2SubnetIds'] = vpc_subnet_id
+          else:
             instance_specs['Ec2SubnetId'] = vpc_subnet_id
         elif availability_zone:
             instance_specs['Placement'] = {'AvailabilityZone': availability_zone}
@@ -150,6 +163,30 @@ class ElasticMapreduceCluster():
                 instance_specs[key_name] = arg_value
 
         return instance_specs
+
+    def has_ebs_configuration(self, args):
+        return 'volume_size' in args or 'volume_type' in args
+
+    def get_ebs_configuration_from_args(self, args):
+        # In GB - beware of EBS minimum sizes for different volume types.
+        volume_size = int(args.get('volume_size', 32))
+
+        # st1, gp2, io1, or standard
+        volume_type = args.get('volume_type', 'gp2')
+
+        return {
+            'EbsBlockDeviceConfigs': [
+                {
+                    'VolumeSpecification': {
+                        'VolumeType': volume_type,
+                        'SizeInGB': volume_size,
+                      # 'Iops': number,  # IO operations per second
+                    },
+                  # 'VolumesPerInstance': 1,
+                },
+            ],
+            'EbsOptimized': True,
+        }
 
     def get_boto_instance_group_specs(self, instance_group_configs):
         instance_group_specs = []
@@ -168,31 +205,87 @@ class ElasticMapreduceCluster():
                         # Make sure the float is converted to a string.
                         instance_group['BidPrice'] = str(args['bidprice'])
 
-                # Configure the EBS volume
-                if 'volume_size' in args or 'volume_type' in args:
-                    # In GB - beware of EBS minimum sizes for different volume types.
-                    volume_size = int(args.get('volume_size', 32))
-
-                    # st1, gp2, io1, or standard
-                    volume_type = args.get('volume_type', 'gp2')
-
-                    instance_group['EbsConfiguration'] = {
-                        'EbsBlockDeviceConfigs': [
-                            {
-                               'VolumeSpecification': {
-                                   'VolumeType': volume_type,
-                                   'SizeInGB': volume_size,
-                                   # 'Iops': number,  # IO operations per second
-                                },
-                                # 'VolumesPerInstance': 1,
-                           },
-                        ],
-                        'EbsOptimized': True,
-                    }
+                # Specify the EBS configuration if given.
+                if self.has_ebs_configuration(args):
+                    instance_group['EbsConfiguration'] = self.get_ebs_configuration_from_args(args)
 
                 instance_group_specs.append(instance_group)
 
         return instance_group_specs
+
+    def get_boto_instance_fleet_specs(self, instance_fleet_configs):
+        instance_fleet_specs = []
+        for role, args in instance_fleet_configs.iteritems():
+            # These control whether or not we'll get on-demand instances in place of
+            # spot instances when the spot market bids can't be fulfilled, and how long
+            # EMR will wait, in minutes, before doing so.
+            on_demand_fallback = args.get('on_demand_fallback', False)
+            bid_timeout_after = args.get('bid_timeout_after', 15)
+            global_bid_price_pct = args.get('bid_price_pct', 25)
+
+            instance_fleet = {
+                'Name': role,
+                'InstanceFleetType': role.upper(),
+            }
+
+            spot_capacity = args.get('spot_capacity', 0)
+            on_demand_capacity = args.get('on_demand_capacity', 0)
+
+            # When specifying an instance fleet for the master role, you can only specify either spot
+            # or on-demand, and not more than a value of one.  This logic will let you simply specify
+            # either:
+            #   master: { type: m3.xlarge }
+            # to get an on-demand instance or:
+            #   master: { type: m3.xlarge, use_spot: False }
+            # to get a spot instance.
+            use_spot_for_master = args.get('use_spot', True)
+            if role == MASTER_ROLE:
+                if use_spot_for_master:
+                    spot_capacity = 1
+                    on_demand_capacity = 0
+                else:
+                    spot_capacity = 0
+                    on_demand_capacity = 1
+
+            instance_fleet['TargetOnDemandCapacity'] = on_demand_capacity
+            instance_fleet['TargetSpotCapacity'] = spot_capacity
+
+            instance_fleet['LaunchSpecifications'] = {
+                'SpotSpecification': {
+                    'TimeoutAction': 'SWITCH_TO_ON_DEMAND' if on_demand_fallback else 'TERMINATE_CLUSTER',
+                    'TimeoutDurationMinutes': bid_timeout_after,
+                }
+            }
+
+            # Grab the instance type, or list of instance types, to configure ourselves for.
+            instance_types = []
+            configured_instance_types = args.get('instance_types', [])
+            if not isinstance(configured_instance_types, list):
+                configured_instance_types = [configured_instance_types]
+
+            # Specify the EBS configuration if given.
+            ebs_config = None
+            if self.has_ebs_configuration(args):
+                ebs_config = self.get_ebs_configuration_from_args(args)
+
+            for configured_instance_type in configured_instance_types:
+                local_bid_price_pct = configured_instance_type.get('bid_price_pct', global_bid_price_pct)
+                instance_type = {
+                    'InstanceType': configured_instance_type['type'],
+                    'BidPriceAsPercentageOfOnDemandPrice': local_bid_price_pct,
+                    'WeightedCapacity': configured_instance_type.get('weight', 1),
+                }
+
+                if ebs_config:
+                    instance_type['EbsConfiguration'] = ebs_config
+
+                instance_types.append(instance_type)
+
+            instance_fleet['InstanceTypeConfigs'] = instance_types
+
+            instance_fleet_specs.append(instance_fleet)
+
+        return instance_fleet_specs
 
     def get_boto_bootstrap_action_specs(self, bootstrap_action_configs):
         bootstrap_action_specs = []
@@ -338,11 +431,18 @@ class ElasticMapreduceCluster():
         if state not in ['WAITING']:
             return False
         else:
-            response = self._emr.list_instance_groups(ClusterId=cluster_id)
-            for instance_group in response['InstanceGroups']:
-                if instance_group['Status']['State'] != 'RUNNING':
-                    return False
-            return True
+            if self.is_instance_fleet:
+                response = self._emr.list_instance_fleets(ClusterId=cluster_id) 
+                for instance_fleet in response['InstanceFleets']:
+                    if instance_fleet['Status']['State'] != 'RUNNING':
+                        return False
+                return True
+            else:
+                response = self._emr.list_instance_groups(ClusterId=cluster_id) 
+                for instance_group in response['InstanceGroups']:
+                    if instance_group['Status']['State'] != 'RUNNING':
+                        return False
+                return True
 
     def get_cluster_state(self, cluster_id=None):
         cluster_id = cluster_id or self.cluster_id
@@ -399,6 +499,7 @@ def main():
             job_flow_role        = dict(default=None),
             service_role         = dict(default='EMR_DefaultRole'),
             # Instance-level parameters:
+            instance_fleets      = dict(),
             instance_groups      = dict(),
             keypair_name         = dict(),
             availability_zone    = dict(),

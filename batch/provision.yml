@@ -13,6 +13,7 @@
     - task_instance_num: 1
     - task_instance_type: m1.medium
     - task_instance_bid: 0.03
+    - instance_fleets: !!null
     - instance_groups:
         master:
           num_instances: "{{ master_instance_num }}"
@@ -56,6 +57,7 @@
         ami_version: "{{ ami_version }}"
         release_label: "{{ release_label }}"
         instance_groups: $instance_groups
+        instance_fleets: $instance_fleets
         bootstrap_actions: $bootstrap_actions
         steps: $steps
         applications: $applications

@@ -239,23 +239,24 @@ class ElasticMapreduceCluster():
             #   master: { type: m3.xlarge, use_spot: False }
             # to get a spot instance.
             use_spot_for_master = args.get('use_spot', True)
-            if role == MASTER_ROLE:
-                if use_spot_for_master:
-                    spot_capacity = 1
-                    on_demand_capacity = 0
-                else:
-                    spot_capacity = 0
-                    on_demand_capacity = 1
 
-            instance_fleet['TargetOnDemandCapacity'] = on_demand_capacity
-            instance_fleet['TargetSpotCapacity'] = spot_capacity
-
-            instance_fleet['LaunchSpecifications'] = {
+            launch_spec = {
                 'SpotSpecification': {
                     'TimeoutAction': 'SWITCH_TO_ON_DEMAND' if on_demand_fallback else 'TERMINATE_CLUSTER',
                     'TimeoutDurationMinutes': bid_timeout_after,
                 }
             }
+
+            if role == MASTER_ROLE:
+                if use_spot_for_master:
+                    instance_fleet['TargetSpotCapacity'] = 1
+                    instance_fleet['LaunchSpecifications'] = launch_spec
+                else:
+                    instance_fleet['TargetOnDemandCapacity'] = 1
+            else:
+                instance_fleet['TargetOnDemandCapacity'] = on_demand_capacity
+                instance_fleet['TargetSpotCapacity'] = spot_capacity
+                instance_fleet['LaunchSpecifications'] = launch_spec
 
             # Grab the instance type, or list of instance types, to configure ourselves for.
             instance_types = []

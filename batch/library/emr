@@ -500,7 +500,7 @@ def main():
             job_flow_role        = dict(default=None),
             service_role         = dict(default='EMR_DefaultRole'),
             # Instance-level parameters:
-            instance_fleets      = dict(),
+            instance_fleets      = dict(default=None),
             instance_groups      = dict(),
             keypair_name         = dict(),
             availability_zone    = dict(),

@@ -67,10 +67,10 @@ class ElasticMapreduceCluster():
 
         parameters['Instances'] = self.get_boto_instance_specs(arguments)
 
-        instance_fleets = arguments.pop('instance_fleets', None)
+        instance_fleets = arguments.pop('instance_fleets', {})
         instance_groups = arguments.pop('instance_groups', DEFAULT_INSTANCE_GROUPS)
 
-        if instance_fleets is None:
+        if not instance_fleets:
             self.is_instance_fleet = False
             parameters['Instances']['InstanceGroups'] = self.get_boto_instance_group_specs(instance_groups)
         else:

@@ -13,7 +13,7 @@
     - task_instance_num: 1
     - task_instance_type: m1.medium
     - task_instance_bid: 0.03
-    - instance_fleets: !!null
+    - instance_fleets: {}
     - instance_groups:
         master:
           num_instances: "{{ master_instance_num }}"

@@ -435,7 +435,7 @@ class ElasticMapreduceCluster():
         if state not in ['WAITING']:
             return False
         else:
-            if self.is_instance_fleet:
+            if True:
                 response = self._emr.list_instance_fleets(ClusterId=cluster_id) 
                 for instance_fleet in response['InstanceFleets']:
                     if instance_fleet['Status']['State'] != 'RUNNING':

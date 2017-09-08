@@ -52,8 +52,8 @@ class ElasticMapreduceCluster():
         **remaining_args
     ):
         changed = False
+        params = self.get_run_jobflow_parameters(**remaining_args)
         if self.cluster_id is None:
-            params = self.get_run_jobflow_parameters(**remaining_args)
             response = self._emr.run_job_flow(**params)
             self.cluster_id = response.get('JobFlowId')
             changed = True

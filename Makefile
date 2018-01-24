@@ -22,5 +22,5 @@ collect.metrics: deps inventory.refresh
 inventory.refresh:
 	./plugins/ec2.py --refresh-cache 2>/dev/null >/dev/null
 
-users.update: deps inventory.refresh
+users.update:
 	ansible-playbook -vvvv -u "$$REMOTE_USER" infrastructure/users.yml -e "$$EXTRA_VARS"

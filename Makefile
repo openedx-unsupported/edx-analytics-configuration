@@ -23,4 +23,4 @@ inventory.refresh:
 	./plugins/ec2.py --refresh-cache 2>/dev/null >/dev/null
 
 users.update: deps inventory.refresh
-	ansible-playbook -u "$$REMOTE_USER" infrastructure/users.yml -e "$$EXTRA_VARS"
+	ansible-playbook -vvvv -u "$$REMOTE_USER" infrastructure/users.yml -e "$$EXTRA_VARS"

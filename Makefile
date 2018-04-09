@@ -20,7 +20,7 @@ collect.metrics: deps inventory.refresh
 	ansible-playbook -u "$$TASK_USER" batch/collect.yml -e "$$EXTRA_VARS" || true
 
 inventory.refresh:
-	./plugins/ec2.py --refresh-cache 2>/dev/null >/dev/null
+	./plugins/ec2.py --refresh-cache >/dev/null
 
 users.update: deps inventory.refresh
 	ansible-playbook -u "$$REMOTE_USER" infrastructure/users.yml -e "$$EXTRA_VARS"

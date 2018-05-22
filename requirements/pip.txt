@@ -1,0 +1,6 @@
+#
+# This file is manually generated to pin libraries that are excluded during the pip-compile upgrade process.  No pip.in
+# file will exist to generate this file.
+
+pip==10.0.1
+setuptools==36.6

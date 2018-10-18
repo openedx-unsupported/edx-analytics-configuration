@@ -19,6 +19,7 @@ DEFAULT_AMI_VERSION = 'latest'
 DEFAULT_INSTANCE_GROUPS = {}
 
 MASTER_ROLE = u'master'
+CORE_ROLE = u'core'
 
 # For a state flow diagram see - http://docs.aws.amazon.com/ElasticMapReduce/latest/DeveloperGuide/ProcessingCycle.html
 ALIVE_STATES = ['STARTING', 'BOOTSTRAPPING', 'RUNNING', 'WAITING', 'TERMINATING']
@@ -230,6 +231,12 @@ class ElasticMapreduceCluster():
 
             spot_capacity = args.get('spot_capacity', 0)
             on_demand_capacity = args.get('on_demand_capacity', 0)
+
+            # if both spot_capacity and on_demand_capacity for core instance fleet are zero, skip it
+            # entirely from launch specifications.
+            if role == CORE_ROLE:
+                if spot_capacity == 0 and on_demand_capacity == 0:
+                    continue
 
             # When specifying an instance fleet for the master role, you can only specify either spot
             # or on-demand, and not more than a value of one.  This logic will let you simply specify

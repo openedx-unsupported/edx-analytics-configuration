@@ -33,4 +33,5 @@ inventory.refresh:
 	./plugins/ec2.py --refresh-cache >/dev/null
 
 users.update: requirements inventory.refresh
-	ansible-playbook -u "$$REMOTE_USER" infrastructure/users.yml -e "$$EXTRA_VARS"
+	echo TESTTEST
+	ansible-playbook --connection local -i 'localhost,' infrastructure/users.yml -e "$$EXTRA_VARS" --check

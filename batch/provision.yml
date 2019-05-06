@@ -2,6 +2,7 @@
 
 - name: Provision cluster
   hosts: localhost
+  connection: local
   gather_facts: False
   vars:
     # The following vars should probably be overridden
@@ -45,8 +46,7 @@
     - additional_slave_security_groups: []
   tasks:
     - name: provision EMR cluster
-      local_action:
-        module: emr
+      emr:
         name: "{{ name }}"
         region: "{{ region }}"
         keypair_name: "{{ keypair_name }}"
@@ -56,16 +56,19 @@
         job_flow_role: "{{ role }}"
         ami_version: "{{ ami_version }}"
         release_label: "{{ release_label }}"
-        instance_groups: $instance_groups
-        instance_fleets: $instance_fleets
-        bootstrap_actions: $bootstrap_actions
-        steps: $steps
-        applications: $applications
-        configurations: $configurations
-        ec2_attributes: $ec2_attributes
-        additional_master_security_groups: $additional_master_security_groups
-        additional_slave_security_groups: $additional_slave_security_groups
+        instance_groups: "{{ instance_groups }}"
+        instance_fleets: "{{ instance_fleets }}"
+        bootstrap_actions: "{{ bootstrap_actions }}"
+        steps: "{{ steps }}"
+        applications: "{{ applications }}"
+        configurations: "{{ configurations }}"
+        ec2_attributes: "{{ ec2_attributes }}"
+        additional_master_security_groups: "{{ additional_master_security_groups }}"
+        additional_slave_security_groups: "{{ additional_slave_security_groups }}"
       register: jobflow
+      retries: 3
+      delay: 5  # Seconds of delay between retries.
+      until: jobflow is success  # Stop condition for retries.
 
     - name: add master to group
       local_action: >

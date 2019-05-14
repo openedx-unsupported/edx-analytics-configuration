@@ -42,5 +42,7 @@ remote-task --job-flow-name="$CLUSTER_NAME" --repo $TASKS_REPO --branch $TASKS_B
 
 cat $WORKSPACE/logs/* || true
 
+# Attempt to collect hadoop metrics and send them to grafana.  DO NOT fail this
+# script/job if only this step fails.
 . $CONF_BIN/activate
-make -C analytics-configuration collect.metrics
+make -C analytics-configuration collect.metrics || true

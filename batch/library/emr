@@ -12,6 +12,7 @@ import os
 import re
 import time
 import traceback
+from past.builtins import basestring
 
 POLLING_INTERVAL_SECONDS = 30
 
@@ -151,8 +152,14 @@ class ElasticMapreduceCluster():
         if vpc_subnet_id:
           if isinstance(vpc_subnet_id, list):
             instance_specs['Ec2SubnetIds'] = vpc_subnet_id
-          else:
+          elif isinstance(vpc_subnet_id, basestring):
             instance_specs['Ec2SubnetId'] = vpc_subnet_id
+          else:
+            raise ValueError(
+                'vpc_subnet_id must be either a list or str. Found a {}.'.format(
+                    type(vpc_subnet_id).__name__,
+                )
+            )
         elif availability_zone:
             instance_specs['Placement'] = {'AvailabilityZone': availability_zone}
 
@@ -499,25 +506,25 @@ class ElasticMapreduceCluster():
 def main():
     module = AnsibleModule(
         argument_spec = dict(
-            state                = dict(default='present'),
-            region               = dict(default='us-east-1'),
+            state                = dict(default='present', type='str'),
+            region               = dict(default='us-east-1', type='str'),
             # Top-level parameters:
-            name                 = dict(required=True),
-            log_uri              = dict(default=None),
-            ami_version          = dict(),
-            release_label        = dict(default=None),
+            name                 = dict(required=True, type='str'),
+            log_uri              = dict(default=None, type='str'),
+            ami_version          = dict(type='str'),
+            release_label        = dict(default=None, type='str'),
             visible_to_all_users = dict(type='bool'),
-            job_flow_role        = dict(default=None),
-            service_role         = dict(default='EMR_DefaultRole'),
+            job_flow_role        = dict(default=None, type='str'),
+            service_role         = dict(default='EMR_DefaultRole', type='str'),
             # Instance-level parameters:
             instance_fleets      = dict(default=None, type='dict'),
             instance_groups      = dict(type='dict'),
-            keypair_name         = dict(),
-            availability_zone    = dict(),
-            hadoop_version       = dict(default=None),
-            vpc_subnet_id        = dict(default=None),
-            emr_managed_master_security_group = dict(default=None),
-            emr_managed_slave_security_group = dict(default=None),
+            keypair_name         = dict(type='str'),
+            availability_zone    = dict(type='str'),
+            hadoop_version       = dict(default=None, type='str'),
+            vpc_subnet_id        = dict(default=None, type='raw'),
+            emr_managed_master_security_group = dict(default=None, type='str'),
+            emr_managed_slave_security_group = dict(default=None, type='str'),
             additional_master_security_groups = dict(default=None, type='list', elements='str'),
             additional_slave_security_groups = dict(default=None, type='list', elements='str'),
             # Additional parameters:

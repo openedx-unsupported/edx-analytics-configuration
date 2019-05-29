@@ -1,14 +1,11 @@
 
 .PHONY: requirements upgrade pin-pip
 
+export CUSTOM_COMPILE_COMMAND = make upgrade
 upgrade: ## update the pip requirements files to use the latest releases satisfying our constraints
 	pip install -qr requirements/pip-tools.txt
 	pip-compile --upgrade -o requirements/pip-tools.txt requirements/pip-tools.in
 	pip-compile --upgrade -o requirements/base.txt requirements/base.in
-	# Post process all of the files generated above to replace the instructions for recreating them
-	script/post-pip-compile.sh \
-        requirements/pip-tools.txt \
-        requirements/base.txt
 
 pin-pip:
 	pip install -qr requirements/pip.txt

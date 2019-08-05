@@ -9,6 +9,7 @@ For use with EMR ami_version 2.x and 3.x, and EMR release labels 4.0 and up.
 
 import boto3
 import os
+import random
 import re
 import time
 import traceback
@@ -151,7 +152,11 @@ class ElasticMapreduceCluster():
 
         if vpc_subnet_id:
           if isinstance(vpc_subnet_id, list):
+            # Amazon claims to allocate the best subnet if a list is passed in, but we are seeing all creations
+            # going to the same subnet, which is causing startup failures when we run out of IPs. Trying to
+            # randomize the list in the hopes that it will spread things out better.
             instance_specs['Ec2SubnetIds'] = vpc_subnet_id
+            random.shuffle(instance_specs['Ec2SubnetIds'])
           elif isinstance(vpc_subnet_id, basestring):
             instance_specs['Ec2SubnetId'] = vpc_subnet_id
           else:
@@ -449,13 +454,13 @@ class ElasticMapreduceCluster():
             return False
         else:
             if self.is_instance_fleet:
-                response = self._emr.list_instance_fleets(ClusterId=cluster_id) 
+                response = self._emr.list_instance_fleets(ClusterId=cluster_id)
                 for instance_fleet in response['InstanceFleets']:
                     if instance_fleet['Status']['State'] != 'RUNNING':
                         return False
                 return True
             else:
-                response = self._emr.list_instance_groups(ClusterId=cluster_id) 
+                response = self._emr.list_instance_groups(ClusterId=cluster_id)
                 for instance_group in response['InstanceGroups']:
                     if instance_group['Status']['State'] != 'RUNNING':
                         return False

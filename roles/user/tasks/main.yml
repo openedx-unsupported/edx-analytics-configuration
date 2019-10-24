@@ -128,6 +128,10 @@
     force=yes
     dest=/home/{{ item.name }}/.ssh/authorized_keys mode=0640
     owner={{ item.name }}
+  register: result
+  until: result is succeeded
+  retries: 5
+  delay: 2
   when: item.github is defined
   with_items:
     - "{{ user_info }}"

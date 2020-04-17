@@ -75,6 +75,11 @@ class ElasticMapreduceCluster():
         instance_fleets = arguments.pop('instance_fleets', {})
         instance_groups = arguments.pop('instance_groups', DEFAULT_INSTANCE_GROUPS)
 
+        ebs_root_volume_size = arguments.pop('ebs_root_volume_size')
+
+        if ebs_root_volume_size:
+            parameters['EbsRootVolumeSize'] = int(ebs_root_volume_size)
+
         if not instance_fleets:
             self.is_instance_fleet = False
             parameters['Instances']['InstanceGroups'] = self.get_boto_instance_group_specs(instance_groups)
@@ -533,6 +538,7 @@ def main():
             additional_master_security_groups = dict(default=None, type='list', elements='str'),
             additional_slave_security_groups = dict(default=None, type='list', elements='str'),
             # Additional parameters:
+            ebs_root_volume_size = dict(type='str'),
             bootstrap_actions    = dict(type='dict'),
             steps                = dict(type='list', elements='dict'),
             tags                 = dict(type='list', elements='dict'),

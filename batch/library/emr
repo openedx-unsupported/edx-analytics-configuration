@@ -71,6 +71,8 @@ class ElasticMapreduceCluster():
         parameters = self.get_boto_base_specs(arguments)
 
         parameters['Instances'] = self.get_boto_instance_specs(arguments)
+        # hard code for now
+        parameters['EbsRootVolumeSize'] = 100
 
         instance_fleets = arguments.pop('instance_fleets', {})
         instance_groups = arguments.pop('instance_groups', DEFAULT_INSTANCE_GROUPS)

@@ -44,6 +44,7 @@
     - log_uri: !!null
     - additional_master_security_groups: []
     - additional_slave_security_groups: []
+    - ebs_root_volume_size: ''
   tasks:
     - name: provision EMR cluster
       emr:
@@ -65,6 +66,7 @@
         ec2_attributes: "{{ ec2_attributes }}"
         additional_master_security_groups: "{{ additional_master_security_groups }}"
         additional_slave_security_groups: "{{ additional_slave_security_groups }}"
+        ebs_root_volume_size: "{{ ebs_root_volume_size }}"
       register: jobflow
       retries: 3
       delay: 5  # Seconds of delay between retries.

@@ -23,7 +23,7 @@ provision.emr: requirements
 	ansible-playbook --connection local batch/provision.yml -e "$$EXTRA_VARS"
 
 terminate.emr: requirements
-	ansible-playbook --connection local batch/terminate.yml -e "$$EXTRA_VARS"
+	ansible-playbook -vvvv --connection local batch/terminate.yml -e "$$EXTRA_VARS"
 
 # We actually connect to the master node, hence the lack of a local connection.
 collect.metrics: requirements inventory.refresh

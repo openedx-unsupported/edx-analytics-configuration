@@ -4,19 +4,15 @@
 #
 #    make upgrade
 #
-ansible==2.7.10
-asn1crypto==0.24.0        # via cryptography
+ansible==2.7.10           # via -r base.in
 bcrypt==3.1.6             # via paramiko
-boto3==1.4.4
-boto==2.38.0
+boto3==1.4.4              # via -r base.in
+boto==2.38.0              # via -r base.in
 botocore==1.5.95          # via boto3, s3transfer
 cffi==1.12.3              # via bcrypt, cryptography, pynacl
-cryptography==2.6.1       # via ansible, paramiko
+cryptography==3.2         # via ansible, paramiko
 docutils==0.14            # via botocore
-enum34==1.1.6             # via cryptography
-future==0.17.1
-futures==3.2.0            # via s3transfer
-ipaddress==1.0.22         # via cryptography
+future==0.17.1            # via -r base.in
 jinja2==2.10.1            # via ansible
 jmespath==0.9.4           # via boto3, botocore
 markupsafe==1.1.1         # via jinja2

@@ -280,9 +280,12 @@ class ElasticMapreduceCluster():
                 else:
                     instance_fleet['TargetOnDemandCapacity'] = 1
             else:
-                instance_fleet['TargetOnDemandCapacity'] = on_demand_capacity
-                instance_fleet['TargetSpotCapacity'] = spot_capacity
-                instance_fleet['LaunchSpecifications'] = launch_spec
+                if not args.get('use_spot', True):
+                    instance_fleet['TargetOnDemandCapacity'] = on_demand_capacity
+                else:
+                    instance_fleet['TargetOnDemandCapacity'] = on_demand_capacity
+                    instance_fleet['TargetSpotCapacity'] = spot_capacity
+                    instance_fleet['LaunchSpecifications'] = launch_spec
 
             # Grab the instance type, or list of instance types, to configure ourselves for.
             instance_types = []

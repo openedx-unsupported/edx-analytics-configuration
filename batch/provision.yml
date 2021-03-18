@@ -68,7 +68,7 @@
         additional_slave_security_groups: "{{ additional_slave_security_groups }}"
         ebs_root_volume_size: "{{ ebs_root_volume_size }}"
       register: jobflow
-      retries: 3
+      retries: 6
       delay: 5  # Seconds of delay between retries.
       until: jobflow is success  # Stop condition for retries.
 

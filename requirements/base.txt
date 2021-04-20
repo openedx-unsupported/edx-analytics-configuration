@@ -4,27 +4,43 @@
 #
 #    make upgrade
 #
-ansible==2.7.10
-asn1crypto==0.24.0        # via cryptography
-bcrypt==3.1.6             # via paramiko
+ansible==2.9.20
+    # via -r base.in
+asn1crypto==0.24.0
+    # via cryptography
 boto3==1.4.4
+    # via -r base.in
 boto==2.38.0
-botocore==1.5.95          # via boto3, s3transfer
-cffi==1.12.3              # via bcrypt, cryptography, pynacl
-cryptography==2.6.1       # via ansible, paramiko
-docutils==0.14            # via botocore
-enum34==1.1.6             # via cryptography
+    # via -r base.in
+botocore==1.5.95
+    # via
+    #   boto3
+    #   s3transfer
+cffi==1.12.3
+    # via cryptography
+cryptography==2.6.1
+    # via ansible
+docutils==0.14
+    # via botocore
 future==0.17.1
-futures==3.2.0            # via s3transfer
-ipaddress==1.0.22         # via cryptography
-jinja2==2.10.1            # via ansible
-jmespath==0.9.4           # via boto3, botocore
-markupsafe==1.1.1         # via jinja2
-paramiko==2.4.2           # via ansible
-pyasn1==0.4.5             # via paramiko
-pycparser==2.19           # via cffi
-pynacl==1.3.0             # via paramiko
-python-dateutil==2.8.0    # via botocore
-pyyaml==5.1               # via ansible
-s3transfer==0.1.13        # via boto3
-six==1.12.0               # via bcrypt, cryptography, pynacl, python-dateutil
+    # via -r base.in
+jinja2==2.10.1
+    # via ansible
+jmespath==0.9.4
+    # via
+    #   boto3
+    #   botocore
+markupsafe==1.1.1
+    # via jinja2
+pycparser==2.19
+    # via cffi
+python-dateutil==2.8.0
+    # via botocore
+pyyaml==5.1
+    # via ansible
+s3transfer==0.1.13
+    # via boto3
+six==1.12.0
+    # via
+    #   cryptography
+    #   python-dateutil

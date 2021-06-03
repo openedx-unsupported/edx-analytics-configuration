@@ -25,10 +25,6 @@ provision.emr: requirements
 terminate.emr: requirements
 	ansible-playbook --connection local batch/terminate.yml -e "$$EXTRA_VARS"
 
-# We actually connect to the master node, hence the lack of a local connection.
-collect.metrics: requirements inventory.refresh
-	ansible-playbook -u "$$TASK_USER" batch/collect.yml -e "$$EXTRA_VARS" || true
-
 inventory.refresh:
 	./plugins/ec2.py --refresh-cache >/dev/null
 

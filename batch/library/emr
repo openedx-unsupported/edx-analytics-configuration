@@ -106,6 +106,7 @@ class ElasticMapreduceCluster():
         visible_to_all_users = arguments.pop('visible_to_all_users', False)
         tags = arguments.pop('tags') or []
         tags.append({'Key': 'ansible:emr:name', 'Value': self.name})
+        tags.append({'Key': 'for-use-with-amazon-emr-managed-policies', 'Value': 'true'})
         applications = arguments.pop('applications', None)
         configurations = arguments.pop('configurations', None)
 

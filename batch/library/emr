@@ -529,7 +529,7 @@ def main():
             release_label        = dict(default=None, type='str'),
             visible_to_all_users = dict(type='bool'),
             job_flow_role        = dict(default=None, type='str'),
-            service_role         = dict(default='EMR_DefaultRole', type='str'),
+            service_role         = dict(default='emr-test-hassan', type='str'),
             # Instance-level parameters:
             instance_fleets      = dict(default=None, type='dict'),
             instance_groups      = dict(type='dict'),

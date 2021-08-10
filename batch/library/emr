@@ -100,6 +100,7 @@ class ElasticMapreduceCluster():
     def get_boto_base_specs(self, arguments):
         ami_version = arguments.pop('ami_version', DEFAULT_AMI_VERSION)
         release_label = arguments.pop('release_label')
+        custom_ami = arguments.pop('custom_ami')
         log_uri = arguments.pop('log_uri')
         job_flow_role = arguments.pop('job_flow_role')
         service_role = arguments.pop('service_role')
@@ -135,6 +136,9 @@ class ElasticMapreduceCluster():
             parameters['AmiVersion'] = ami_version
             if applications is not None:
                 parameters['NewSupportedProducts'] = self.get_boto_application_specs(applications)
+
+        if custom_ami:
+            parameters['CustomAmiId'] = custom_ami
 
         return parameters
 
@@ -526,6 +530,7 @@ def main():
             log_uri              = dict(default=None, type='str'),
             ami_version          = dict(type='str'),
             release_label        = dict(default=None, type='str'),
+            custom_ami           = dict(default=None, type='str'),
             visible_to_all_users = dict(type='bool'),
             job_flow_role        = dict(default=None, type='str'),
             service_role         = dict(default='EMR_DefaultRole', type='str'),

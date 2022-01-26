@@ -32,6 +32,7 @@
     - bootstrap_actions: {}
     - steps: []
     - applications: []
+    - tags: []
     - configurations: []
     - ec2_attributes: {}
     - region: 'us-east-1'
@@ -62,6 +63,7 @@
         bootstrap_actions: "{{ bootstrap_actions }}"
         steps: "{{ steps }}"
         applications: "{{ applications }}"
+        tags: "{{ tags }}"
         configurations: "{{ configurations }}"
         ec2_attributes: "{{ ec2_attributes }}"
         additional_master_security_groups: "{{ additional_master_security_groups }}"

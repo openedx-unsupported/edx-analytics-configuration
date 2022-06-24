@@ -1,9 +1,19 @@
 
 .PHONY: requirements upgrade pin-pip
 
-upgrade: ## update the pip requirements files to use the latest releases satisfying our constraints
+COMMON_CONSTRAINTS_TXT=requirements/common_constraints.txt
+.PHONY: $(COMMON_CONSTRAINTS_TXT)
+$(COMMON_CONSTRAINTS_TXT):
+	wget -O "$(@)" https://raw.githubusercontent.com/edx/edx-lint/master/edx_lint/files/common_constraints.txt || touch "$(@)"
+
+upgrade: export CUSTOM_COMPILE_COMMAND=make upgrade
+upgrade: $(COMMON_CONSTRAINTS_TXT)
+	## update the requirements/*.txt files with the latest packages satisfying requirements/*.in
 	pip install -qr requirements/pip-tools.txt
+	pip-compile --allow-unsafe --rebuild --upgrade -o requirements/pip-tools.txt requirements/pip-tools.in
 	pip-compile --upgrade -o requirements/pip-tools.txt requirements/pip-tools.in
+	pip install -qr requirements/pip.txt
+	pip install -r requirements/pip-tools.txt
 	pip-compile --upgrade -o requirements/base.txt requirements/base.in
 	# Post process all of the files generated above to replace the instructions for recreating them
 	script/post-pip-compile.sh \

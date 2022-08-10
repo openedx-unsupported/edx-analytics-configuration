@@ -4,55 +4,47 @@
 #
 #    make upgrade
 #
-ansible==2.7.10
-    # via -r requirements/base.in
-bcrypt==3.2.2
-    # via paramiko
+ansible==4.2.0
+    # via -r base.in
+ansible-core==2.11.12
+    # via ansible
 boto==2.38.0
-    # via -r requirements/base.in
+    # via -r base.in
 boto3==1.4.4
-    # via -r requirements/base.in
+    # via -r base.in
 botocore==1.5.95
     # via
     #   boto3
     #   s3transfer
 cffi==1.15.0
-    # via
-    #   bcrypt
-    #   cryptography
-    #   pynacl
+    # via cryptography
 cryptography==37.0.2
-    # via
-    #   ansible
-    #   paramiko
+    # via ansible-core
 docutils==0.18.1
     # via botocore
 future==0.17.1
-    # via -r requirements/base.in
+    # via -r base.in
 jinja2==3.1.2
-    # via ansible
+    # via ansible-core
 jmespath==0.10.0
     # via
     #   boto3
     #   botocore
 markupsafe==2.1.1
     # via jinja2
-paramiko==2.11.0
-    # via ansible
+packaging==21.3
+    # via ansible-core
 pycparser==2.21
     # via cffi
-pynacl==1.5.0
-    # via paramiko
+pyparsing==3.0.9
+    # via packaging
 python-dateutil==2.8.2
     # via botocore
 pyyaml==6.0
-    # via ansible
+    # via ansible-core
+resolvelib==0.5.4
+    # via ansible-core
 s3transfer==0.1.13
     # via boto3
 six==1.16.0
-    # via
-    #   paramiko
-    #   python-dateutil
-
-# The following packages are considered to be unsafe in a requirements file:
-# setuptools
+    # via python-dateutil

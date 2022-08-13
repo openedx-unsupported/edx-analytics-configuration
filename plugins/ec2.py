@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-'''
+"""
 This is a modified version of
 the original source code at:
 
@@ -92,7 +92,7 @@ variable named:
 
 Security groups are comma-separated in 'ec2_security_group_ids' and
 'ec2_security_group_names'.
-'''
+"""
 
 # (c) 2012, Peter Sankauskas
 #
@@ -112,7 +112,7 @@ Security groups are comma-separated in 'ec2_security_group_ids' and
 # along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
 
 ######################################################################
-
+from __future__ import print_function
 import sys
 import os
 import argparse
@@ -122,12 +122,21 @@ import boto
 from boto import ec2
 from boto import rds
 from boto import route53
-import ConfigParser
+try:
+    from ConfigParser import ConfigParser
+except ImportError:
+    from configparser import ConfigParser
 
 try:
     import json
 except ImportError:
     import simplejson as json
+
+
+# If the unicode keyword is not available,
+# then set it to str
+if 'unicode' not in globals():
+    unicode = str
 
 
 class Ec2Inventory(object):
@@ -162,7 +171,7 @@ class Ec2Inventory(object):
             else:
                 data_to_print = self.json_format_dict(self.inventory, True)
 
-        print data_to_print
+        print(data_to_print)
 
 
     def is_cache_valid(self):
@@ -181,7 +190,7 @@ class Ec2Inventory(object):
     def read_settings(self):
         ''' Reads the settings from the ec2.ini file '''
 
-        config = ConfigParser.SafeConfigParser()
+        config = ConfigParser()
         config.read(self.args.inifile)
 
         # is eucalyptus?
@@ -221,8 +230,8 @@ class Ec2Inventory(object):
 
         # Cache related
         cache_path = config.get('ec2', 'cache_path')
-        self.cache_path_cache = cache_path + "/ansible-ec2.cache"
-        self.cache_path_index = cache_path + "/ansible-ec2.index"
+        self.cache_path_cache = cache_path + "/ansible-ec2.cache.json"
+        self.cache_path_index = cache_path + "/ansible-ec2.index.json"
         self.cache_max_age = config.getint('ec2', 'cache_max_age')
 
 
@@ -276,20 +285,21 @@ class Ec2Inventory(object):
 
             reservations = conn.get_all_instances()
             for reservation in reservations:
-                instances = sorted(reservation.instances)
+                instances = sorted(reservation.instances, key=lambda e: e.id)
                 for instance in instances:
                     self.add_instance(instance, region)
 
         except boto.exception.BotoServerError as e:
             if  not self.eucalyptus:
-                print "Looks like AWS is down again:"
-            print e
+                print("Looks like AWS is down again:")
+            print(e)
             sys.exit(1)
 
     def get_rds_instances_by_region(self, region):
-	''' Makes an AWS API call to the list of RDS instances in a particular
-        region '''
-
+        '''
+        Makes an AWS API call to the list of RDS instances in a particular
+        region
+        '''
         try:
             conn = rds.connect_to_region(region)
             if conn:
@@ -297,8 +307,8 @@ class Ec2Inventory(object):
                 for instance in instances:
                     self.add_rds_instance(instance, region)
         except boto.exception.BotoServerError as e:
-            print "Looks like AWS RDS is down: "
-            print e
+            print("Looks like AWS RDS is down: ")
+            print(e)
             sys.exit(1)
 
     def get_instance(self, region, instance_id):
@@ -369,12 +379,12 @@ class Ec2Inventory(object):
                 key = self.to_safe("security_group_" + group.name)
                 self.push(self.inventory, key, dest)
         except AttributeError:
-            print 'Package boto seems a bit older.'
-            print 'Please upgrade boto >= 2.3.0.'
+            print('Package boto seems a bit older.')
+            print('Please upgrade boto >= 2.3.0.')
             sys.exit(1)
 
         # Inventory: Group by tag keys
-        for k, v in instance.tags.iteritems():
+        for k, v in instance.tags.items():
             key = self.to_safe("tag_" + k + "=" + v)
             self.push(self.inventory, key, dest)
             self.keep_first(self.inventory, 'first_in_' + key, dest)
@@ -428,8 +438,8 @@ class Ec2Inventory(object):
                 key = self.to_safe("security_group_" + instance.security_group.name)
                 self.push(self.inventory, key, dest)
         except AttributeError:
-            print 'Package boto seems a bit older.'
-            print 'Please upgrade boto >= 2.3.0.'
+            print('Package boto seems a bit older.')
+            print('Please upgrade boto >= 2.3.0.')
             sys.exit(1)
 
         # Inventory: Group by engine
@@ -520,7 +530,7 @@ class Ec2Inventory(object):
             elif key == 'ec2_region':
                 instance_vars[key] = value.name
             elif key == 'ec2_tags':
-                for k, v in value.iteritems():
+                for k, v in value.items():
                     key = self.to_safe('ec2_tag_' + k)
                     instance_vars[key] = v
 

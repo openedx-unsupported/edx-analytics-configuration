@@ -24,7 +24,7 @@ pin-pip:
 	pip install -qr requirements/pip.txt
 
 requirements: pin-pip
-	pip install --no-cache-dir -q -r requirements/base.txt
+	pip install --no-cache-dir -I -q -r requirements/base.txt
 
 # Run ansible with --connection local but WITHOUT -i 'localhost,' so that it
 # runs the emr module in the local python which is likely necessary since that

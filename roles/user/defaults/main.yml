@@ -2,9 +2,9 @@
 #
 # edX Analytics Configuration
 #
-# github:     https://github.com/edx/analytics-configuration
-# license:    https://github.com/edx/analytics-configuration/blob/master/LICENSE
-# code style: https://github.com/edx/configuration/wiki/Ansible-Coding-Conventions
+# github:     https://github.com/openedx/analytics-configuration
+# license:    https://github.com/openedx/analytics-configuration/blob/master/LICENSE
+# code style: https://github.com/openedx/configuration/wiki/Ansible-Coding-Conventions
 ##
 # Vars for role user
 #

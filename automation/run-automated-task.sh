@@ -33,7 +33,7 @@ fi
 . $TASKS_BIN/activate
 make -C analytics-tasks bootstrap
 
-TASKS_REPO=${TASKS_REPO:-https://github.com/edx/edx-analytics-pipeline.git}
+TASKS_REPO=${TASKS_REPO:-https://github.com/openedx/edx-analytics-pipeline.git}
 VIRTUALENV_EXTRA_ARGS="${VIRTUALENV_EXTRA_ARGS:-}"
 
 # Define task on the command line, including the task name and all of its arguments.

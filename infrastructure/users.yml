@@ -1,8 +1,23 @@
 ---
+- name: Resolve domain name
+  hosts: localhost
+  tasks:
+    - name: Retrieve the Record
+      route53:
+        state: get
+        zone: analytics.edx.org
+        record: "{{ item }}"
+        type: A
+      loop: "{{ target_hosts }}"
+      register: record
+    - name: display the record
+      debug: var=record
+    - set_fact:
+        host_ip_address: "{{ record.results[0].set.value }}"
 
 - name: Modify Users
-  hosts: "{{ hosts }}"
+  hosts: "{{ hostvars['localhost'].host_ip_address }}"
   gather_facts: False
-  sudo: True
+  become: yes
   roles:
     - user

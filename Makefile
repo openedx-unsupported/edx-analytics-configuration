@@ -35,8 +35,5 @@ provision.emr: requirements
 terminate.emr: requirements
 	ansible-playbook --connection local batch/terminate.yml -e "$$EXTRA_VARS"
 
-inventory.refresh:
-	./plugins/ec2.py --refresh-cache >/dev/null
-
-users.update: requirements inventory.refresh
+users.update: requirements
 	ansible-playbook -u "$$REMOTE_USER" infrastructure/users.yml -e "$$EXTRA_VARS"

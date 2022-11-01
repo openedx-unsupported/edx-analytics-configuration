@@ -88,6 +88,6 @@
 - name: Configure SSH access to cluster
   hosts: launched_master
   gather_facts: False
-  sudo: True
+  become: yes
   roles:
     - user

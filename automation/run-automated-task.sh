@@ -9,11 +9,11 @@ rm -rf $WORKSPACE/logs
 
 if [ ! -d "$VENV_ROOT/analytics-tasks" ]
 then
-    virtualenv $VENV_ROOT/analytics-tasks
+    virtualenv --python=python2 $VENV_ROOT/analytics-tasks
 fi
 if [ ! -d "$VENV_ROOT/analytics-configuration" ]
 then
-    virtualenv $VENV_ROOT/analytics-configuration
+    virtualenv --python=python3.8 $VENV_ROOT/analytics-configuration
 fi
 
 TASKS_BIN=$VENV_ROOT/analytics-tasks/bin

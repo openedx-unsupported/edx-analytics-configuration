@@ -177,7 +177,7 @@ class ElasticMapreduceCluster():
         if hadoop_version:
             instance_specs['HadoopVersion'] = hadoop_version
 
-        for arg_name, key_name in SECURITY_GROUPS.iteritems():
+        for arg_name, key_name in SECURITY_GROUPS.items():
             arg_value = arguments.pop(arg_name, None)
             if arg_value is not None:
                 instance_specs[key_name] = arg_value
@@ -210,7 +210,7 @@ class ElasticMapreduceCluster():
 
     def get_boto_instance_group_specs(self, instance_group_configs):
         instance_group_specs = []
-        for role, args in instance_group_configs.iteritems():
+        for role, args in instance_group_configs.items():
             num_instances = int(args['num_instances'])
             if num_instances > 0:
                 instance_group = {
@@ -235,7 +235,7 @@ class ElasticMapreduceCluster():
 
     def get_boto_instance_fleet_specs(self, instance_fleet_configs):
         instance_fleet_specs = []
-        for role, args in instance_fleet_configs.iteritems():
+        for role, args in instance_fleet_configs.items():
             # These control whether or not we'll get on-demand instances in place of
             # spot instances when the spot market bids can't be fulfilled, and how long
             # EMR will wait, in minutes, before doing so.
@@ -319,7 +319,7 @@ class ElasticMapreduceCluster():
 
     def get_boto_bootstrap_action_specs(self, bootstrap_action_configs):
         bootstrap_action_specs = []
-        for name, spec in bootstrap_action_configs.iteritems():
+        for name, spec in bootstrap_action_configs.items():
             path = spec
             args = []
             if isinstance(spec, dict):

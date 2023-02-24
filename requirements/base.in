@@ -3,4 +3,4 @@
 ansible==6.4.0                     # GPL v3
 boto==2.38.0                        # MIT -- used for ec2 inventory
 boto3==1.16.0                        # MIT -- used for emr deployment
-future==0.17.1                      # MIT
+future==0.18.3                      # MIT

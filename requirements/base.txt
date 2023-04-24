@@ -5,23 +5,23 @@
 #    make upgrade
 #
 ansible==6.4.0
-    # via -r requirements/base.in
+    # via -r base.in
 ansible-core==2.13.5
     # via ansible
 boto==2.38.0
-    # via -r requirements/base.in
+    # via -r base.in
 boto3==1.16.0
-    # via -r requirements/base.in
+    # via -r base.in
 botocore==1.19.63
     # via
     #   boto3
     #   s3transfer
 cffi==1.15.1
     # via cryptography
-cryptography==38.0.1
+cryptography==39.0.1
     # via ansible-core
 future==0.17.1
-    # via -r requirements/base.in
+    # via -r base.in
 jinja2==3.1.2
     # via ansible-core
 jmespath==0.10.0

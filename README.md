@@ -1,13 +1,11 @@
 edx-analytics-configuration
 =======================
 
-How to Contribute
------------------
+# DEPRECATION NOTICE
 
-Contributions are very welcome, but for legal reasons, you must submit a signed
-[individual contributor's agreement](http://code.edx.org/individual-contributor-agreement.pdf)
-before we can accept your contribution. See our
-[CONTRIBUTING](https://github.com/openedx/.github/blob/master/CONTRIBUTING.md)
-file for more information -- it also contains guidelines for how to maintain
-high code quality, which will make your contribution more likely to be accepted.
+The Insights product and associated repositories are in the process of being 
+deprecated and removed from service. Details on the deprecation status and
+process can be found in the relevant [Github issue](https://github.com/openedx/public-engineering/issues/221).
 
+This repository is slated may be archived and moved to the openedx-unsupported
+Github organization at any time.

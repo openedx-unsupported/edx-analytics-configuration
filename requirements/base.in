@@ -2,4 +2,3 @@
 
 ansible==6.4.0                     # GPL v3
 boto3==1.16.0                        # MIT -- used for emr deployment
-future==0.17.1                      # MIT

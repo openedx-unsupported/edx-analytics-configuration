@@ -40,6 +40,7 @@
     - role: emr
     - ami_version: 2.4.11
     - release_label: ''
+    - custom_ami: ''
     - vpc_subnet_id: !!null
     - user_info: []
     - log_uri: !!null
@@ -58,6 +59,7 @@
         job_flow_role: "{{ role }}"
         ami_version: "{{ ami_version }}"
         release_label: "{{ release_label }}"
+        custom_ami: "{{ custom_ami }}"
         instance_groups: "{{ instance_groups }}"
         instance_fleets: "{{ instance_fleets }}"
         bootstrap_actions: "{{ bootstrap_actions }}"
